@@ -1,25 +1,111 @@
-.piramide-visual {
-    letter-spacing: 12px;
-    line-height: 1.4;
-    font-size: 1.4rem;
-    color: var(--amarillo-racing);
-    font-weight: bold;
-    margin-top: 10px;
+/* Paleta de Colores Racing Negro Mate */
+:root {
+    --negro-fondo: #0a0a0a;
+    --negro-card: #141414;
+    --amarillo-racing: #ffcc00;
+    --gris-texto: #a0a0a0;
+    --blanco: #ffffff;
 }
 
-.destaque {
-    background-color: var(--amarillo-racing) !important;
-    text-align: center;
-    border: none !important;
-}
-
-.titulo-amarillo {
-    color: var(--amarillo-racing);
-    font-size: 1.2rem;
-    margin-bottom: 10px;
+body {
+    background-color: var(--negro-fondo);
+    color: var(--blanco);
+    font-family: 'Orbitron', sans-serif; /* Si puedes usar Google Fonts se vería más pro */
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
 }
 
 .container {
-    max-width: 800px;
-    margin: 0 auto;
+    max-width: 900px;
+    width: 100%;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+h1 {
+    font-size: 3rem;
+    margin: 0;
+    color: var(--amarillo-racing);
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    text-shadow: 0 0 10px rgba(255, 204, 0, 0.4);
+}
+
+header p {
+    color: var(--gris-texto);
+    letter-spacing: 2px;
+}
+
+/* Tarjetas */
+.card {
+    background: var(--negro-card);
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    border-color: var(--amarillo-racing);
+}
+
+h2 {
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    color: var(--amarillo-racing);
+    margin-top: 0;
+    border-left: 4px solid var(--amarillo-racing);
+    padding-left: 15px;
+    margin-bottom: 25px;
+}
+
+/* Pirámide Estilo Matrix/Racing */
+.piramide-visual {
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-size: 1.8rem;
+    color: var(--amarillo-racing);
+    letter-spacing: 15px;
+    line-height: 1.6;
+}
+
+/* Lista de Frecuentes */
+.fila-stats {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #222;
+    font-size: 1.1rem;
+}
+
+.fila-stats span:last-child {
+    color: var(--amarillo-racing);
+    font-weight: bold;
+}
+
+/* El Dato Ganador */
+.destaque {
+    background: linear-gradient(145deg, #ffcc00, #d4aa00);
+    color: #000 !important;
+    text-align: center;
+    padding: 40px;
+}
+
+.destaque h2 {
+    color: #000;
+    border-color: #000;
+}
+
+#dato-ganador {
+    font-size: 3.5rem !important;
+    font-weight: 900;
+    text-shadow: none;
 }
