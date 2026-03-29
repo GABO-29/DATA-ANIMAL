@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATA ANIMAL | Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <header>
+        <h1>ADMINISTRACIÓN DATA ANIMAL</h1>
+        <p>Carga de Resultados Semanales</p>
+    </header>
+
+    <div class="card">
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+            <div>
+                <label>Lunes de inicio:</label><br>
+                <input type="date" id="fecha-inicio" class="input-dark">
+            </div>
+            <div>
+                <label>Seleccionar Ruleta:</label><br>
+                <select id="ruleta-select" class="input-dark">
+                    <option value="Lotto Activo">Lotto Activo</option>
+                    <option value="La Granjita">La Granjita</option>
+                    <option value="Guacharo Activo">Guacharo Activo</option>
+                    <option value="Selva Plus">Selva Plus</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="overflow-x: auto;">
+        <table id="tabla-carga">
+            <thead>
+                <tr>
+                    <th>Horario</th>
+                    <th>Lunes</th>
+                    <th>Martes</th>
+                    <th>Miércoles</th>
+                    <th>Jueves</th>
+                    <th>Viernes</th>
+                    <th>Sábado</th>
+                    <th>Domingo</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpo-tabla">
+                </tbody>
+        </table>
+    </div>
+
+    <button onclick="guardarSemana()" class="btn-racing">GUARDAR SEMANA COMPLETA</button>
+
+    <script src="supabase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>

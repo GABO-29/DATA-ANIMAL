@@ -1,0 +1,25 @@
+.piramide-visual {
+    letter-spacing: 12px;
+    line-height: 1.4;
+    font-size: 1.4rem;
+    color: var(--amarillo-racing);
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+.destaque {
+    background-color: var(--amarillo-racing) !important;
+    text-align: center;
+    border: none !important;
+}
+
+.titulo-amarillo {
+    color: var(--amarillo-racing);
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}

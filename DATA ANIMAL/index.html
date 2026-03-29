@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATA ANIMAL | Dashboard de Pronósticos</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <header>
+        <h1>DATA ANIMAL</h1>
+        <p>Sistema Inteligente de Pronósticos Estadísticos</p>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2 class="titulo-amarillo">PIRÁMIDE DEL DÍA</h2>
+            <div id="fecha-actual" style="margin-bottom: 10px; opacity: 0.7;"></div>
+            <div id="contenedor-piramide" class="piramide-visual">
+                </div>
+        </section>
+
+        <section class="card">
+            <h2 class="titulo-amarillo">ANIMALES MÁS FRECUENTES (TOP 5)</h2>
+            <p style="font-size: 0.9rem; margin-bottom: 15px;">Basado en los últimos 90 días de sorteos</p>
+            <div id="lista-frecuentes">
+                <p>Analizando base de datos...</p>
+            </div>
+        </section>
+
+        <section class="card destaque">
+            <h2 style="color: #000;">EL DATO DE "DATA ANIMAL"</h2>
+            <div id="dato-ganador" style="font-size: 2rem; font-weight: bold; color: #000;">
+                Calculando...
+            </div>
+        </section>
+    </main>
+
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
