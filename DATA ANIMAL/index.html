@@ -1,22 +1,56 @@
-<main class="container">
-    <header>
-        <h1>DATA ANIMAL</h1>
-        <p>Sistema Inteligente de Pronósticos Estadísticos</p>
-    </header>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DATA ANIMAL | Pronósticos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #ffffff; --gris: #888; }
+        * { box-sizing: border-box; }
+        body { background: var(--fondo); color: var(--texto); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { max-width: 500px; width: 100%; }
+        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid var(--oro); padding-bottom: 10px; }
+        h1 { font-size: 2rem; letter-spacing: 3px; margin: 0; color: var(--oro); }
+        select { width: 100%; padding: 12px; background: var(--card); color: var(--oro); border: 1px solid var(--oro); border-radius: 5px; font-weight: bold; margin-bottom: 20px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h2 { font-size: 0.9rem; color: var(--oro); text-transform: uppercase; letter-spacing: 1px; margin-top: 0; }
+        .piramide-visual { display: flex; flex-direction: column; align-items: center; font-family: monospace; font-size: 1.5rem; color: var(--oro); letter-spacing: 10px; line-height: 1.6; }
+        .fila-stats { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #222; }
+        .destaque { background: var(--oro); color: #000; text-align: center; padding: 30px; border-radius: 12px; }
+        #dato-ganador { font-size: 3rem; font-weight: 900; margin-top: 10px; }
+        @media (max-width: 480px) { h1 { font-size: 1.5rem; } .piramide-visual { font-size: 1.2rem; letter-spacing: 6px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>DATA ANIMAL</h1></header>
+        
+        <select id="filtro-ruleta" onchange="obtenerEstadisticas(this.value)">
+            <option value="Lotto Activo">LOTTO ACTIVO</option>
+            <option value="La Granjita">LA GRANJITA</option>
+            <option value="Selva Plus">SELVA PLUS</option>
+            <option value="Guacharo Activo">GUACHARO ACTIVO</option>
+            <option value="Guacharito">GUACHARITO</option>
+            <option value="Lotto Rey">LOTTO REY</option>
+        </select>
 
-    <section class="card">
-        <h2>PIRÁMIDE DEL DÍA</h2>
-        <div id="contenedor-piramide" class="piramide-visual"></div>
-    </section>
+        <section class="card">
+            <h2>PIRÁMIDE DE HOY</h2>
+            <div id="contenedor-piramide" class="piramide-visual"></div>
+        </section>
 
-    <section class="card">
-        <h2>ANIMALES MÁS FRECUENTES</h2>
-        <div id="lista-frecuentes">
-            </div>
-    </section>
+        <section class="card">
+            <h2>ANIMALES MÁS FRECUENTES</h2>
+            <div id="lista-frecuentes"></div>
+        </section>
 
-    <section class="card destaque">
-        <h2>EL DATO DE DATA ANIMAL</h2>
-        <div id="dato-ganador">Calculando...</div>
-    </section>
-</main>
+        <section class="card destaque">
+            <h2 style="color: #000; border: none; margin:0;">DATO DATA ANIMAL</h2>
+            <div id="dato-ganador">---</div>
+        </section>
+    </div>
+    <script src="supabase-config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

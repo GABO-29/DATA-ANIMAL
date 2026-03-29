@@ -1,70 +1,39 @@
-const horarios = [
-    "08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", 
-    "12:00 p.m.", "01:00 p.m.", "02:00 p.m.", "03:00 p.m.",
-    "04:00 p.m.", "05:00 p.m.", "06:00 p.m.", "07:00 p.m."
-];
+const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00 p.m.", "01:00 p.m.", "02:00 p.m.", "03:00 p.m.", "04:00 p.m.", "05:00 p.m.", "06:00 p.m.", "07:00 p.m."];
 
-function inicializarTabla() {
-    const cuerpo = document.getElementById('cuerpo-tabla');
-    cuerpo.innerHTML = ""; // Limpiar antes de generar
-    horarios.forEach(hora => {
-        let fila = `<tr><td style="font-weight:bold; color:#ffcc00;">${hora}</td>`;
-        for (let i = 0; i < 7; i++) {
-            fila += `<td><input type="text" class="input-celda" data-hora="${hora}" data-dia="${i}" placeholder="Ej: 11 GATO"></td>`;
-        }
-        fila += `</tr>`;
-        cuerpo.innerHTML += fila;
+function crearTabla() {
+    const tbody = document.getElementById('tabla-body');
+    horarios.forEach(h => {
+        let fila = `<tr><td style="color:var(--oro); font-size:0.7rem;">${h}</td>`;
+        for (let i=0; i<7; i++) fila += `<td><input type="text" class="cell" data-hora="${h}" data-dia="${i}"></td>`;
+        tbody.innerHTML += fila + `</tr>`;
     });
 }
 
-async function guardarSemana() {
-    const inputs = document.querySelectorAll('.input-celda');
-    const fechaInicioStr = document.getElementById('fecha-inicio').value;
-    const ruleta = document.getElementById('ruleta-select').value;
-    
-    if(!fechaInicioStr) return alert("Por favor, selecciona la fecha del Lunes.");
+async function enviarDatos() {
+    const fechaBase = document.getElementById('fecha-lunes').value;
+    const ruleta = document.getElementById('ruleta-admin').value;
+    if (!fechaBase) return alert("Selecciona el lunes.");
 
-    let datosASubir = [];
+    const celdas = document.querySelectorAll('.cell');
+    let registros = [];
 
-    inputs.forEach(input => {
-        const valor = input.value.trim();
-        if (valor !== "") {
-            // Calculamos la fecha real de la celda
-            const fechaPartes = fechaInicioStr.split('-');
-            let fechaSorteo = new Date(fechaPartes[0], fechaPartes[1] - 1, fechaPartes[2]);
-            fechaSorteo.setDate(fechaSorteo.getDate() + parseInt(input.dataset.dia));
-            
-            // Lógica para separar: "11 GATO" -> numero: 11, nombre: GATO
-            let partes = valor.split(" ");
-            let num = partes[0];
-            let nombre = partes.slice(1).join(" ").toUpperCase();
-
-            datosASubir.push({
-                fecha: fechaSorteo.toISOString().split('T')[0],
-                hora: input.dataset.hora,
+    celdas.forEach(c => {
+        if (c.value.trim()) {
+            let f = new Date(fechaBase);
+            f.setDate(f.getDate() + parseInt(c.dataset.dia));
+            let partes = c.value.split(" ");
+            registros.push({
+                fecha: f.toISOString().split('T')[0],
+                hora: c.dataset.hora,
                 ruleta: ruleta,
-                animal_nombre: nombre || "SIN NOMBRE",
-                animal_numero: num
+                animal_numero: partes[0],
+                animal_nombre: partes.slice(1).join(" ").toUpperCase() || "S/N"
             });
         }
     });
 
-    if(datosASubir.length === 0) return alert("No hay datos para guardar.");
-
-    console.log("Subiendo datos a DATA ANIMAL...", datosASubir);
-
-    const { data, error } = await supabaseClient
-        .from('resultados')
-        .insert(datosASubir);
-
-    if (error) {
-        console.error(error);
-        alert("Error: " + error.message);
-    } else {
-        alert("¡Éxito! Se han guardado " + datosASubir.length + " sorteos en DATA ANIMAL.");
-        // Opcional: limpiar tabla tras guardar
-        inputs.forEach(i => i.value = "");
-    }
+    const { error } = await supabaseClient.from('resultados').insert(registros);
+    if (error) alert("Error: " + error.message);
+    else alert("¡Datos guardados con éxito!");
 }
-
-document.addEventListener('DOMContentLoaded', inicializarTabla);
+crearTabla();

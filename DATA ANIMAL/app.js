@@ -1,70 +1,50 @@
-// --- LÓGICA DE LA PIRÁMIDE ---
-function calcularPiramide() {
+function generarPiramide() {
     const hoy = new Date();
-    document.getElementById('fecha-actual').innerText = hoy.toLocaleDateString();
-    
-    const dia = String(hoy.getDate()).padStart(2, '0');
-    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-    const anio = String(hoy.getFullYear());
-    
-    let base = dia + mes + anio; // Ejemplo: 29032026
-    let niveles = [base];
-
+    let base = String(hoy.getDate()).padStart(2,'0') + String(hoy.getMonth()+1).padStart(2,'0') + String(hoy.getFullYear());
+    let filas = [base];
     while (base.length > 1) {
-        let nuevoNivel = "";
-        for (let i = 0; i < base.length - 1; i++) {
-            let suma = parseInt(base[i]) + parseInt(base[i+1]);
-            nuevoNivel += suma % 10;
-        }
-        niveles.push(nuevoNivel);
-        base = nuevoNivel;
+        let n = "";
+        for (let i=0; i<base.length-1; i++) n += (parseInt(base[i]) + parseInt(base[i+1])) % 10;
+        filas.push(n);
+        base = n;
     }
-
-    const contenedor = document.getElementById('contenedor-piramide');
-    contenedor.innerHTML = niveles.map(n => `<div>${n}</div>`).join('');
+    document.getElementById('contenedor-piramide').innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-// --- LÓGICA DE ESTADÍSTICAS (SUPABASE) ---
-async function obtenerEstadisticas() {
-    // Pedimos todos los resultados a Supabase
+async function obtenerEstadisticas(ruleta = "Lotto Activo") {
+    const listado = document.getElementById('lista-frecuentes');
+    listado.innerHTML = "Analizando...";
+    
     const { data, error } = await supabaseClient
         .from('resultados')
-        .select('animal_nombre, animal_numero');
+        .select('animal_nombre, animal_numero')
+        .eq('ruleta', ruleta);
 
-    if (error) {
-        console.error("Error cargando datos:", error);
+    if (error || !data.length) {
+        listado.innerHTML = "Sin datos registrados.";
+        document.getElementById('dato-ganador').innerText = "---";
         return;
     }
 
-    // Contamos cuántas veces aparece cada animal
     const conteo = {};
     data.forEach(item => {
-        const clave = `${item.animal_numero} ${item.animal_nombre}`;
-        conteo[clave] = (conteo[clave] || 0) + 1;
+        const key = `${item.animal_numero} ${item.animal_nombre}`;
+        conteo[key] = (conteo[key] || 0) + 1;
     });
 
-    // Ordenamos de mayor a menor
-    const ordenados = Object.entries(conteo)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5); // Tomamos el Top 5
-
-    // Mostramos en pantalla
-    const listaDiv = document.getElementById('lista-frecuentes');
-    listaDiv.innerHTML = ordenados.map(a => `
-        <div style="display:flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #333;">
+    const top = Object.entries(conteo).sort((a,b) => b[1] - a[1]).slice(0,5);
+    
+    listado.innerHTML = top.map(a => `
+        <div class="fila-stats">
             <span>${a[0]}</span>
-            <span style="color:#ffcc00; font-weight:bold;">${a[1]} salidas</span>
+            <span style="color:var(--oro)">${a[1]} VECES</span>
         </div>
     `).join('');
 
-    // El "Dato Ganador" es el número 1 de la lista
-    if(ordenados.length > 0) {
-        document.getElementById('dato-ganador').innerText = ordenados[0][0];
-    }
+    document.getElementById('dato-ganador').innerText = top[0][0].split(" ")[0];
 }
 
-// Ejecutar todo al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
-    calcularPiramide();
+    generarPiramide();
     obtenerEstadisticas();
 });
