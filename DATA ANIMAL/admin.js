@@ -1,75 +1,75 @@
 const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00 p.m.", "01:00 p.m.", "02:00 p.m.", "03:00 p.m.", "04:00 p.m.", "05:00 p.m.", "06:00 p.m.", "07:00 p.m."];
 
+// Crea la cuadrícula de 12 horas x 7 días
 function crearTabla() {
     const tbody = document.getElementById('tabla-body');
-    horarios.forEach((h, filaIndex) => {
-        let fila = `<tr><td style="color:var(--oro); font-size:0.7rem;">${h}</td>`;
-        for (let colIndex = 0; colIndex < 7; colIndex++) {
+    if(!tbody) return;
+    
+    horarios.forEach((h, fIdx) => {
+        let fila = `<tr><td style="color:var(--oro); font-weight:bold; font-size:0.7rem;">${h}</td>`;
+        for (let cIdx = 0; cIdx < 7; cIdx++) {
             fila += `<td><input type="text" class="cell" 
-                        data-hora="${h}" 
-                        data-fila="${filaIndex}" 
-                        data-col="${colIndex}" 
-                        onpaste="manejarPegado(event)"></td>`;
+                        data-fila="${fIdx}" data-col="${cIdx}" 
+                        placeholder="..." onpaste="manejarPegado(event)"></td>`;
         }
-        tbody.innerHTML += fila + `</tr>`;
+        tbody.innerHTML += fila + "</tr>";
     });
 }
 
+// Función mágica para pegar desde Excel
 function manejarPegado(e) {
-    // Evitamos que el texto se pegue normal en una sola casilla
     e.preventDefault();
+    const texto = (e.clipboardData || window.clipboardData).getData('text');
+    const filasExcel = texto.split(/\r?\n/);
+    const fIni = parseInt(e.target.dataset.fila);
+    const cIni = parseInt(e.target.dataset.col);
 
-    // Obtenemos los datos del portapapeles
-    const portapapeles = (e.clipboardData || window.clipboardData).getData('text');
-    
-    // Excel separa columnas con Tabuladores (\t) y filas con Saltos de Línea (\n)
-    const filasExcel = portapapeles.split(/\r?\n/);
-    
-    // Identificamos desde qué celda empezaste a pegar
-    const filaInicio = parseInt(e.target.dataset.fila);
-    const colInicio = parseInt(e.target.dataset.col);
-
-    filasExcel.forEach((contenidoFila, i) => {
-        const columnas = contenidoFila.split('\t');
-        columnas.forEach((valor, j) => {
-            // Buscamos la casilla destino en la cuadrícula
-            const inputDestino = document.querySelector(
-                `.cell[data-fila="${filaInicio + i}"][data-col="${colInicio + j}"]`
-            );
-            if (inputDestino) {
-                inputDestino.value = valor.trim();
-            }
+    filasExcel.forEach((linea, i) => {
+        const celdas = linea.split('\t');
+        celdas.forEach((valor, j) => {
+            const destino = document.querySelector(`.cell[data-fila="${fIni + i}"][data-col="${cIni + j}"]`);
+            if (destino) destino.value = valor.trim();
         });
     });
 }
 
+// Envía los datos a Supabase
 async function enviarDatos() {
-    const fechaBase = document.getElementById('fecha-lunes').value;
+    const fechaLunes = document.getElementById('fecha-lunes').value;
     const ruleta = document.getElementById('ruleta-admin').value;
-    if (!fechaBase) return alert("Selecciona el lunes.");
+    
+    if (!fechaLunes) return alert("Por favor, selecciona la fecha del lunes.");
 
-    const celdas = document.querySelectorAll('.cell');
+    const inputs = document.querySelectorAll('.cell');
     let registros = [];
 
-    celdas.forEach(c => {
-        if (c.value.trim()) {
-            let f = new Date(fechaBase + "T00:00:00"); // Forzamos hora local
-            f.setDate(f.getDate() + parseInt(c.dataset.col));
+    inputs.forEach(input => {
+        if (input.value.trim() !== "") {
+            // Calcular fecha sumando días al lunes
+            let f = new Date(fechaLunes + "T00:00:00");
+            f.setDate(f.getDate() + parseInt(input.dataset.col));
             
-            let partes = c.value.split(" ");
+            let val = input.value.trim();
+            let espacioIdx = val.indexOf(" ");
+            
             registros.push({
                 fecha: f.toISOString().split('T')[0],
-                hora: c.dataset.hora,
+                hora: horarios[input.dataset.fila],
                 ruleta: ruleta,
-                animal_numero: partes[0],
-                animal_nombre: partes.slice(1).join(" ").toUpperCase() || "S/N"
+                animal_numero: espacioIdx !== -1 ? val.substring(0, espacioIdx) : val,
+                animal_nombre: espacioIdx !== -1 ? val.substring(espacioIdx + 1).toUpperCase() : "S/N"
             });
         }
     });
 
+    if (registros.length === 0) return alert("No hay datos para guardar.");
+
     const { error } = await supabaseClient.from('resultados').insert(registros);
     if (error) alert("Error: " + error.message);
-    else alert("¡Datos pegados y guardados con éxito!");
+    else {
+        alert(`¡Éxito! ${registros.length} resultados guardados en ${ruleta}.`);
+        inputs.forEach(i => i.value = ""); // Limpiar tabla
+    }
 }
 
 crearTabla();

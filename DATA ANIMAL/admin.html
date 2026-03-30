@@ -3,29 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DATA ANIMAL | Admin</title>
+    <title>ADMIN | DATA ANIMAL</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --fondo: #0a0a0a; --oro: #ffcc00; --texto: #fff; }
         body { background: var(--fondo); color: var(--texto); font-family: sans-serif; padding: 10px; }
-        .admin-card { background: #141414; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .admin-card { background: #141414; padding: 20px; border-radius: 12px; border: 1px solid #222; }
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th, td { border: 1px solid #333; padding: 8px; text-align: center; }
-        th { background: #222; color: var(--oro); font-size: 0.8rem; }
-        input[type="text"] { width: 100%; background: transparent; border: none; color: #fff; text-align: center; text-transform: uppercase; }
-        input[type="text"]:focus { background: #222; outline: 1px solid var(--oro); }
-        .btn-save { width: 100%; padding: 15px; background: var(--oro); border: none; font-weight: bold; cursor: pointer; margin-top: 20px; border-radius: 5px; }
-        .scroll { overflow-x: auto; }
-        .controls { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        input[type="date"], select { padding: 8px; background: #222; color: #fff; border: 1px solid #444; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
+        th { color: var(--oro); font-size: 0.75rem; text-transform: uppercase; }
+        input { width: 100%; background: transparent; border: none; color: #fff; text-align: center; text-transform: uppercase; }
+        .btn { width: 100%; padding: 15px; background: var(--oro); border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+        .scroll { overflow-x: auto; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <h1>PANEL DE CARGA</h1>
     <div class="admin-card">
-        <div class="controls">
-            <input type="date" id="fecha-lunes">
-            <select id="ruleta-admin">
+        <h2>CARGA DE DATOS</h2>
+        <div style="display:flex; gap:10px;">
+            <input type="date" id="fecha-lunes" style="background:#222; padding:10px; border-radius:5px;">
+            <select id="ruleta-admin" style="background:#222; color:#fff; padding:10px; flex:1; border-radius:5px;">
                 <option value="Lotto Activo">Lotto Activo</option>
                 <option value="La Granjita">La Granjita</option>
                 <option value="Selva Plus">Selva Plus</option>
@@ -34,13 +31,11 @@
         </div>
         <div class="scroll">
             <table>
-                <thead>
-                    <tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mie</th><th>Jue</th><th>Vie</th><th>Sab</th><th>Dom</th></tr>
-                </thead>
+                <thead><tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mie</th><th>Jue</th><th>Vie</th><th>Sab</th><th>Dom</th></tr></thead>
                 <tbody id="tabla-body"></tbody>
             </table>
         </div>
-        <button class="btn-save" onclick="enviarDatos()">GUARDAR SEMANA EN DATA ANIMAL</button>
+        <button class="btn" onclick="enviarDatos()">GUARDAR SEMANA</button>
     </div>
     <script src="supabase-config.js"></script>
     <script src="admin.js"></script>
