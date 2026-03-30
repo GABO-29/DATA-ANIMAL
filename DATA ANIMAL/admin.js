@@ -2,6 +2,7 @@ const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00
 
 function crearTabla() {
     const tbody = document.getElementById('tabla-body');
+    if (!tbody) return;
     tbody.innerHTML = ""; // Limpiar antes de crear
     horarios.forEach((h, filaIdx) => {
         let fila = `<tr><td style="color:var(--oro); font-weight:bold; font-size:0.75rem;">${h}</td>`;
@@ -32,7 +33,8 @@ function manejarPegado(e) {
 
 async function enviarDatos() {
     const fechaLunes = document.getElementById('fecha-lunes').value;
-    const ruleta = document.getElementById('ruleta-admin').value.trim(); // Limpieza de espacios
+    const selectRuleta = document.getElementById('ruleta-admin');
+    const ruleta = selectRuleta ? selectRuleta.value.trim() : ""; 
     
     if (!fechaLunes) return alert("Por favor, selecciona la fecha del lunes de esta semana.");
 
@@ -41,20 +43,26 @@ async function enviarDatos() {
 
     inputs.forEach(input => {
         if (input.value.trim() !== "") {
+            // Calculamos la fecha real sumando los días al lunes seleccionado
             let fechaReal = new Date(fechaLunes + "T00:00:00");
             fechaReal.setDate(fechaReal.getDate() + parseInt(input.dataset.col));
             
             let texto = input.value.trim();
             let espacioIdx = texto.indexOf(" ");
             
-            let num = espacioIdx !== -1 ? texto.substring(0, espacioIdx) : texto;
+            // Separación de número y nombre (ej: "17 PAVO")
+            let numOriginal = espacioIdx !== -1 ? texto.substring(0, espacioIdx) : texto;
             let nom = espacioIdx !== -1 ? texto.substring(espacioIdx + 1).toUpperCase() : "S/N";
+
+            // APLICACIÓN DEL CAMBIO: Estandarizar número a 2 dígitos para que el Dashboard lo lea bien
+            // Esto convierte "0" en "00", "5" en "05", etc.
+            let numEstandar = numOriginal.padStart(2, '0');
 
             registros.push({
                 fecha: fechaReal.toISOString().split('T')[0],
                 hora: input.dataset.hora,
                 ruleta: ruleta,
-                animal_numero: num,
+                animal_numero: numEstandar,
                 animal_nombre: nom
             });
         }
@@ -63,6 +71,7 @@ async function enviarDatos() {
     if (registros.length === 0) return alert("No hay datos para guardar.");
 
     const btn = document.querySelector('.btn-save');
+    const textoOriginalBtn = btn.innerText;
     btn.innerText = "GUARDANDO...";
     btn.disabled = true;
 
@@ -70,14 +79,16 @@ async function enviarDatos() {
     
     if (error) {
         alert("Error al guardar: " + error.message);
-        btn.innerText = "GUARDAR EN DATA ANIMAL";
+        btn.innerText = textoOriginalBtn;
         btn.disabled = false;
     } else {
         alert(`¡Éxito! Registrados ${registros.length} resultados en ${ruleta}.`);
+        // Limpiamos los inputs después de guardar exitosamente
         inputs.forEach(i => i.value = "");
-        btn.innerText = "GUARDAR EN DATA ANIMAL";
+        btn.innerText = textoOriginalBtn;
         btn.disabled = false;
     }
 }
 
+// Iniciar la tabla al cargar el script
 crearTabla();
