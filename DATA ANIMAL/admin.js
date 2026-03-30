@@ -4,6 +4,7 @@ function crearTabla() {
     const tbody = document.getElementById('tabla-body');
     if(!tbody) return;
     
+    tbody.innerHTML = ""; // Limpiar antes de generar
     horarios.forEach((h, fIdx) => {
         let fila = `<tr><td style="color:var(--oro); font-weight:bold; font-size:0.75rem; background:#111;">${h}</td>`;
         for (let cIdx = 0; cIdx < 7; cIdx++) {
@@ -44,21 +45,21 @@ async function enviarDatos() {
 
     inputs.forEach(input => {
         if (input.value.trim() !== "") {
-            // Cálculo preciso de la fecha
-            let f = new Date(fechaLunes + "T00:00:00");
+            // Crear fecha exacta sin desfase de zona horaria
+            let partesFecha = fechaLunes.split('-');
+            let f = new Date(partesFecha[0], partesFecha[1] - 1, partesFecha[2]);
             f.setDate(f.getDate() + parseInt(input.dataset.col));
             
             let val = input.value.trim();
             let espacioIdx = val.indexOf(" ");
             
-            // Separación de número y nombre (ej: "17 PAVO")
             let num = espacioIdx !== -1 ? val.substring(0, espacioIdx) : val;
             let nom = espacioIdx !== -1 ? val.substring(espacioIdx + 1).toUpperCase() : "S/N";
 
             registros.push({
                 fecha: f.toISOString().split('T')[0],
                 hora: horarios[input.dataset.fila],
-                ruleta: ruletaOriginal.trim(), // Se guarda tal cual está en el select
+                ruleta: ruletaOriginal, // Se guarda el nombre exacto del select
                 animal_numero: num,
                 animal_nombre: nom
             });
@@ -78,10 +79,10 @@ async function enviarDatos() {
         btn.disabled = false;
         btn.innerText = "Guardar y Actualizar Dashboard";
     } else {
-        alert(`¡Todo listo! Se guardaron ${registros.length} resultados en ${ruletaOriginal}.`);
-        window.location.reload(); // Recarga para limpiar todo
+        alert(`¡Éxito! Se guardaron ${registros.length} resultados para ${ruletaOriginal}.`);
+        window.location.reload();
     }
 }
 
-// Iniciar tabla
-crearTabla();
+// Iniciar tabla al cargar
+document.addEventListener('DOMContentLoaded', crearTabla);
