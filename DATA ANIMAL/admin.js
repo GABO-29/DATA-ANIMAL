@@ -2,6 +2,7 @@ const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00
 
 function crearTabla() {
     const tbody = document.getElementById('tabla-body');
+    tbody.innerHTML = ""; // Limpiar antes de crear
     horarios.forEach((h, filaIdx) => {
         let fila = `<tr><td style="color:var(--oro); font-weight:bold; font-size:0.75rem;">${h}</td>`;
         for (let colIdx = 0; colIdx < 7; colIdx++) {
@@ -31,7 +32,7 @@ function manejarPegado(e) {
 
 async function enviarDatos() {
     const fechaLunes = document.getElementById('fecha-lunes').value;
-    const ruleta = document.getElementById('ruleta-admin').value;
+    const ruleta = document.getElementById('ruleta-admin').value.trim(); // Limpieza de espacios
     
     if (!fechaLunes) return alert("Por favor, selecciona la fecha del lunes de esta semana.");
 
@@ -40,14 +41,12 @@ async function enviarDatos() {
 
     inputs.forEach(input => {
         if (input.value.trim() !== "") {
-            // Calculamos la fecha real sumando los días al lunes seleccionado
             let fechaReal = new Date(fechaLunes + "T00:00:00");
             fechaReal.setDate(fechaReal.getDate() + parseInt(input.dataset.col));
             
             let texto = input.value.trim();
             let espacioIdx = texto.indexOf(" ");
             
-            // Si el usuario pega algo como "17 PAVO", lo separa. Si solo pone "17", el nombre queda como "S/N"
             let num = espacioIdx !== -1 ? texto.substring(0, espacioIdx) : texto;
             let nom = espacioIdx !== -1 ? texto.substring(espacioIdx + 1).toUpperCase() : "S/N";
 
@@ -63,14 +62,21 @@ async function enviarDatos() {
 
     if (registros.length === 0) return alert("No hay datos para guardar.");
 
+    const btn = document.querySelector('.btn-save');
+    btn.innerText = "GUARDANDO...";
+    btn.disabled = true;
+
     const { error } = await supabaseClient.from('resultados').insert(registros);
     
     if (error) {
         alert("Error al guardar: " + error.message);
+        btn.innerText = "GUARDAR EN DATA ANIMAL";
+        btn.disabled = false;
     } else {
-        alert(`¡Éxito! Se han registrado ${registros.length} resultados en la ruleta ${ruleta}.`);
-        // Opcional: limpiar tabla después de guardar
+        alert(`¡Éxito! Registrados ${registros.length} resultados en ${ruleta}.`);
         inputs.forEach(i => i.value = "");
+        btn.innerText = "GUARDAR EN DATA ANIMAL";
+        btn.disabled = false;
     }
 }
 
