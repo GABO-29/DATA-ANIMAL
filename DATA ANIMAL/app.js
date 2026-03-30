@@ -15,18 +15,23 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-// Función auxiliar para establecer la jerarquía: 12pm < 1pm < 6pm
-function obtenerValorHorario(horaStr) {
-    if (!horaStr) return 0;
-    let [tiempo, meridiano] = horaStr.toLowerCase().split(' ');
-    let [hh, mm] = tiempo.split(':').map(Number);
-    
-    // Convertimos a formato 24h para comparación matemática
-    if (meridiano.includes('a.m.') && hh === 12) hh = 0; // Medianoche
-    else if (meridiano.includes('p.m.') && hh !== 12) hh += 12; // De 1pm a 11pm
-    // El 12 p.m. (mediodía) se queda como 12, siendo menor que 13 (1 p.m.)
-    
-    return hh * 100 + mm; 
+// ESTA FUNCIÓN DEFINE LA JERARQUÍA LÓGICA: 12PM ES MENOR A 1PM
+function obtenerPrioridadHora(horaStr) {
+    const ordenEstructural = {
+        "08:00 a.m.": 1,
+        "09:00 a.m.": 2,
+        "10:00 a.m.": 3,
+        "11:00 a.m.": 4,
+        "12:00 p.m.": 5, // Mediodía
+        "01:00 p.m.": 6,
+        "02:00 p.m.": 7,
+        "03:00 p.m.": 8,
+        "04:00 p.m.": 9,
+        "05:00 p.m.": 10,
+        "06:00 p.m.": 11,
+        "07:00 p.m.": 12
+    };
+    return ordenEstructural[horaStr] || 0;
 }
 
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
@@ -35,7 +40,7 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     listado.innerHTML = "<div class='loading'>Sincronizando con el reloj del servidor...</div>";
     
     try {
-        // 1. OBTENER TODO EL HISTORIAL
+        // 1. OBTENER TODO EL HISTORIAL PARA ANÁLISIS DE SECUENCIAS
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
@@ -46,15 +51,16 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             return;
         }
 
-        // 2. ORDENAMIENTO MANUAL POR JERARQUÍA (FECHA Y LUEGO HORA 24H)
+        // --- APLICACIÓN DE JERARQUÍA DE TIEMPO ---
         data.sort((a, b) => {
+            // Primero ordenamos por fecha (más reciente arriba)
             if (a.fecha > b.fecha) return -1;
             if (a.fecha < b.fecha) return 1;
-            // Si es la misma fecha, aplicamos la lógica: 12pm es menor a 1pm, 2pm... 6pm
-            return obtenerValorHorario(b.hora) - obtenerValorHorario(a.hora);
+            // Si la fecha es igual, usamos la prioridad: 12pm < 1pm < 6pm
+            return obtenerPrioridadHora(b.hora) - obtenerPrioridadHora(a.hora);
         });
 
-        // 3. DETECTAR ÚLTIMO RESULTADO REAL
+        // 2. DETECTAR ÚLTIMO RESULTADO REAL BASADO EN EL NUEVO ORDEN
         const ahora = new Date();
         const ultimoResultado = data[0]; 
 
@@ -72,8 +78,9 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         }
 
         // Ponderación inteligente
-        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; });
+        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; }); // Secuencia vale mucho
         
+        // Filtro por día de la semana (Lunes de meses anteriores)
         data.filter(d => {
             const fD = new Date(d.fecha + "T00:00:00");
             return diasSemana[fD.getDay()] === diaActualNombre;
