@@ -2,56 +2,76 @@ const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00
 
 function crearTabla() {
     const tbody = document.getElementById('tabla-body');
-    horarios.forEach((h, fIdx) => {
-        let fila = `<tr><td style="color:var(--oro); font-size:0.7rem;">${h}</td>`;
-        for (let cIdx = 0; cIdx < 7; cIdx++) {
-            fila += `<td><input type="text" class="cell" data-fila="${fIdx}" data-col="${cIdx}" data-hora="${h}" onpaste="manejarPegado(event)"></td>`;
+    horarios.forEach((h, filaIdx) => {
+        let fila = `<tr><td style="color:var(--oro); font-weight:bold; font-size:0.75rem;">${h}</td>`;
+        for (let colIdx = 0; colIdx < 7; colIdx++) {
+            fila += `<td><input type="text" class="cell" placeholder="..." 
+                        data-hora="${h}" data-fila="${filaIdx}" data-col="${colIdx}" 
+                        onpaste="manejarPegado(event)"></td>`;
         }
-        tbody.innerHTML += fila + "</tr>";
+        tbody.innerHTML += fila + `</tr>`;
     });
 }
 
 function manejarPegado(e) {
     e.preventDefault();
-    const texto = (e.clipboardData || window.clipboardData).getData('text');
-    const filas = texto.split(/\r?\n/);
-    const fIni = parseInt(e.target.dataset.fila);
-    const cIni = parseInt(e.target.dataset.col);
+    const data = (e.clipboardData || window.clipboardData).getData('text');
+    const filasExcel = data.split(/\r?\n/);
+    const fInicio = parseInt(e.target.dataset.fila);
+    const cInicio = parseInt(e.target.dataset.col);
 
-    filas.forEach((linea, i) => {
+    filasExcel.forEach((linea, i) => {
         const celdas = linea.split('\t');
-        celdas.forEach((val, j) => {
-            const dest = document.querySelector(`.cell[data-fila="${fIni+i}"][data-col="${cIni+j}"]`);
-            if (dest) dest.value = val.trim();
+        celdas.forEach((valor, j) => {
+            const destino = document.querySelector(`.cell[data-fila="${fInicio + i}"][data-col="${cInicio + j}"]`);
+            if (destino) destino.value = valor.trim();
         });
     });
 }
 
 async function enviarDatos() {
-    const lunes = document.getElementById('fecha-lunes').value;
+    const fechaLunes = document.getElementById('fecha-lunes').value;
     const ruleta = document.getElementById('ruleta-admin').value;
-    if (!lunes) return alert("Selecciona el lunes.");
+    
+    if (!fechaLunes) return alert("Por favor, selecciona la fecha del lunes de esta semana.");
 
     const inputs = document.querySelectorAll('.cell');
     let registros = [];
 
-    inputs.forEach(i => {
-        if (i.value.trim()) {
-            let f = new Date(lunes + "T00:00:00");
-            f.setDate(f.getDate() + parseInt(i.dataset.col));
-            let val = i.value.trim();
+    inputs.forEach(input => {
+        if (input.value.trim() !== "") {
+            // Calculamos la fecha real sumando los días al lunes seleccionado
+            let fechaReal = new Date(fechaLunes + "T00:00:00");
+            fechaReal.setDate(fechaReal.getDate() + parseInt(input.dataset.col));
+            
+            let texto = input.value.trim();
+            let espacioIdx = texto.indexOf(" ");
+            
+            // Si el usuario pega algo como "17 PAVO", lo separa. Si solo pone "17", el nombre queda como "S/N"
+            let num = espacioIdx !== -1 ? texto.substring(0, espacioIdx) : texto;
+            let nom = espacioIdx !== -1 ? texto.substring(espacioIdx + 1).toUpperCase() : "S/N";
+
             registros.push({
-                fecha: f.toISOString().split('T')[0],
-                hora: i.dataset.hora,
+                fecha: fechaReal.toISOString().split('T')[0],
+                hora: input.dataset.hora,
                 ruleta: ruleta,
-                animal_numero: val.split(" ")[0],
-                animal_nombre: val.split(" ").slice(1).join(" ").toUpperCase() || "S/N"
+                animal_numero: num,
+                animal_nombre: nom
             });
         }
     });
 
+    if (registros.length === 0) return alert("No hay datos para guardar.");
+
     const { error } = await supabaseClient.from('resultados').insert(registros);
-    if (error) alert("Error: " + error.message);
-    else alert("¡Data Animal Actualizada!");
+    
+    if (error) {
+        alert("Error al guardar: " + error.message);
+    } else {
+        alert(`¡Éxito! Se han registrado ${registros.length} resultados en la ruleta ${ruleta}.`);
+        // Opcional: limpiar tabla después de guardar
+        inputs.forEach(i => i.value = "");
+    }
 }
+
 crearTabla();
