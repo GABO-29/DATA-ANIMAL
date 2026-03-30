@@ -1,50 +1,68 @@
-function generarPiramide() {
-    const hoy = new Date();
-    let base = String(hoy.getDate()).padStart(2,'0') + String(hoy.getMonth()+1).padStart(2,'0') + String(hoy.getFullYear());
-    let filas = [base];
-    while (base.length > 1) {
-        let n = "";
-        for (let i=0; i<base.length-1; i++) n += (parseInt(base[i]) + parseInt(base[i+1])) % 10;
-        filas.push(n);
-        base = n;
-    }
-    document.getElementById('contenedor-piramide').innerHTML = filas.map(f => `<div>${f}</div>`).join('');
-}
-
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
-    const listado = document.getElementById('lista-frecuentes');
-    listado.innerHTML = "Analizando...";
-    
     const { data, error } = await supabaseClient
         .from('resultados')
-        .select('animal_nombre, animal_numero')
-        .eq('ruleta', ruleta);
+        .select('*'); // Traemos todo para hacer cruces
 
-    if (error || !data.length) {
-        listado.innerHTML = "Sin datos registrados.";
-        document.getElementById('dato-ganador').innerText = "---";
-        return;
-    }
+    if (error || !data.length) return;
 
-    const conteo = {};
-    data.forEach(item => {
-        const key = `${item.animal_numero} ${item.animal_nombre}`;
-        conteo[key] = (conteo[key] || 0) + 1;
+    // 1. FILTRAR POR RULETA ACTUAL
+    const dataRuleta = data.filter(d => d.ruleta === ruleta);
+
+    // 2. EL MÁS SALIDOR POR HORA (Análisis de Horario)
+    const conteoHora = {};
+    dataRuleta.forEach(item => {
+        const key = `${item.hora} -> ${item.animal_numero} ${item.animal_nombre}`;
+        conteoHora[key] = (conteoHora[key] || 0) + 1;
     });
+    const mejorPorHora = Object.entries(conteoHora).sort((a,b) => b[1] - a[1])[0];
 
-    const top = Object.entries(conteo).sort((a,b) => b[1] - a[1]).slice(0,5);
+    // 3. LÓGICA DE TRIPLETAS (Los 3 más frecuentes de la ruleta)
+    const conteoGeneral = {};
+    dataRuleta.forEach(item => {
+        const key = `${item.animal_numero} ${item.animal_nombre}`;
+        conteoGeneral[key] = (conteoGeneral[key] || 0) + 1;
+    });
+    const top3 = Object.entries(conteoGeneral).sort((a,b) => b[1] - a[1]).slice(0,3);
+
+    // 4. CRUCE INTER-RULETA (¿Qué sale en otras ruletas cuando aquí sale el líder?)
+    const liderActual = top3[0][0];
+    const fechasLider = dataRuleta.filter(d => `${d.animal_numero} ${d.animal_nombre}` === liderActual).map(d => d.fecha);
     
-    listado.innerHTML = top.map(a => `
-        <div class="fila-stats">
-            <span>${a[0]}</span>
-            <span style="color:var(--oro)">${a[1]} VECES</span>
-        </div>
+    // Buscamos qué salió en OTRAS ruletas esas mismas fechas
+    const cruces = data.filter(d => d.ruleta !== ruleta && fechasLider.includes(d.fecha));
+    const conteoCruce = {};
+    cruces.forEach(c => {
+        conteoCruce[c.animal_nombre] = (conteoCruce[c.animal_nombre] || 0) + 1;
+    });
+    const animalCruce = Object.entries(conteoCruce).sort((a,b) => b[1] - a[1])[0];
+
+    // --- MOSTRAR EN PANTALLA ---
+    
+    // Sección Frecuentes (Ya la tienes)
+    document.getElementById('lista-frecuentes').innerHTML = top3.map(a => `
+        <div class="fila-stats"><span>${a[0]}</span><span>${a[1]} veces</span></div>
     `).join('');
 
-    document.getElementById('dato-ganador').innerText = top[0][0].split(" ")[0];
+    // Nueva Sección: Análisis VIP (Debes añadir estos IDs a tu index.html)
+    const seccionVip = document.getElementById('analisis-vip');
+    if(seccionVip) {
+        seccionVip.innerHTML = `
+            <div class="card">
+                <h2>ANÁLISIS DE CRUCE</h2>
+                <p>Cuando sale <b>${liderActual}</b>, en otras ruletas suele salir: 
+                   <span style="color:var(--oro)">${animalCruce ? animalCruce[0] : 'S/N'}</span></p>
+            </div>
+            <div class="card destaque">
+                <h2>TRIPLETA RECOMENDADA</h2>
+                <div style="font-size:1.2rem; font-weight:bold;">
+                    ${top3.map(t => t[0].split(" ")[0]).join(" - ")}
+                </div>
+            </div>
+            <div class="card">
+                <h2>EL DUEÑO DE LA HORA</h2>
+                <p>A las <span style="color:var(--oro)">${mejorPorHora[0].split(" -> ")[0]}</span> 
+                   el animal más fuerte es: <b>${mejorPorHora[0].split(" -> ")[1]}</b></p>
+            </div>
+        `;
+    }
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-    generarPiramide();
-    obtenerEstadisticas();
-});
