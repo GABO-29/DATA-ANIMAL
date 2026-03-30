@@ -1,5 +1,3 @@
-// admin.js - VERSIÓN COMPLETA SIN RECORTES
-
 const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00 p.m.", "01:00 p.m.", "02:00 p.m.", "03:00 p.m.", "04:00 p.m.", "05:00 p.m.", "06:00 p.m.", "07:00 p.m."];
 
 function crearTabla() {
@@ -47,7 +45,7 @@ async function enviarDatos() {
 
     inputs.forEach(input => {
         if (input.value.trim() !== "") {
-            // Ajuste de fecha para evitar desfases horarios
+            // Ajuste de fecha para evitar desfases
             let partes = fechaLunes.split('-');
             let f = new Date(partes[0], partes[1] - 1, partes[2]);
             f.setDate(f.getDate() + parseInt(input.dataset.col));
@@ -61,7 +59,7 @@ async function enviarDatos() {
             registros.push({
                 fecha: f.toISOString().split('T')[0],
                 hora: horarios[input.dataset.fila],
-                ruleta: ruletaOriginal.trim(), 
+                ruleta: ruletaOriginal, // Coincide con el texto del <option>
                 animal_numero: num,
                 animal_nombre: nom
             });
@@ -72,7 +70,7 @@ async function enviarDatos() {
 
     const btn = document.querySelector('.btn-save');
     btn.disabled = true;
-    btn.innerText = "GUARDANDO RESULTADOS...";
+    btn.innerText = "GUARDANDO EN LA NUBE...";
 
     const { error } = await supabaseClient.from('resultados').insert(registros);
     
