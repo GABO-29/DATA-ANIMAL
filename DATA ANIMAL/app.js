@@ -15,25 +15,6 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-// ESTA FUNCIÓN DEFINE LA JERARQUÍA LÓGICA: 12PM ES MENOR A 1PM
-function obtenerPrioridadHora(horaStr) {
-    const ordenEstructural = {
-        "08:00 a.m.": 1,
-        "09:00 a.m.": 2,
-        "10:00 a.m.": 3,
-        "11:00 a.m.": 4,
-        "12:00 p.m.": 5, // Mediodía
-        "01:00 p.m.": 6,
-        "02:00 p.m.": 7,
-        "03:00 p.m.": 8,
-        "04:00 p.m.": 9,
-        "05:00 p.m.": 10,
-        "06:00 p.m.": 11,
-        "07:00 p.m.": 12
-    };
-    return ordenEstructural[horaStr] || 0;
-}
-
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
@@ -44,24 +25,21 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
-            .eq('ruleta', ruleta);
+            .eq('ruleta', ruleta)
+            .order('fecha', { ascending: false })
+            .order('hora', { ascending: false });
 
         if (error || !data || data.length < 2) {
             listado.innerHTML = "Esperando carga de datos históricos...";
             return;
         }
 
-        // --- APLICACIÓN DE JERARQUÍA DE TIEMPO ---
-        data.sort((a, b) => {
-            // Primero ordenamos por fecha (más reciente arriba)
-            if (a.fecha > b.fecha) return -1;
-            if (a.fecha < b.fecha) return 1;
-            // Si la fecha es igual, usamos la prioridad: 12pm < 1pm < 6pm
-            return obtenerPrioridadHora(b.hora) - obtenerPrioridadHora(a.hora);
-        });
-
-        // 2. DETECTAR ÚLTIMO RESULTADO REAL BASADO EN EL NUEVO ORDEN
+        // 2. DETECTAR ÚLTIMO RESULTADO REAL BASADO EN FECHA Y HORA ACTUAL
         const ahora = new Date();
+        const fechaHoy = ahora.toISOString().split('T')[0];
+        
+        // Buscamos en 'data' el primer registro que sea de hoy o de la fecha más reciente cargada
+        // Esto evita que si hoy es Lunes, te tome un dato del "Viernes" como último si no has cargado nada hoy.
         const ultimoResultado = data[0]; 
 
         const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
