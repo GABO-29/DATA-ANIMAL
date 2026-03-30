@@ -1,4 +1,4 @@
-// app.js - MOTOR POR DETECCIÓN DE TIEMPO REAL
+// app.js - MOTOR DE PRECISIÓN ABSOLUTA
 
 function generarPiramide() {
     const hoy = new Date();
@@ -15,58 +15,57 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-// OPCIÓN 1: TRADUCTOR DE JERARQUÍA CON LIMPIEZA DE TEXTO
+// ESTA FUNCIÓN ES EL "FILTRO" QUE EVITA EL ERROR DE LAS IMÁGENES
 function obtenerPrioridadHora(horaStr) {
     if (!horaStr) return 0;
     
-    // Limpiamos el texto: quitamos puntos, espacios y pasamos a minúsculas
-    // Ejemplo: "12:00 p.m." -> "12:00pm"
-    const horaLimpia = horaStr.toLowerCase().replace(/\./g, '').replace(/\s/g, '');
+    // Normalizamos: pasamos a minúsculas, quitamos puntos, quitamos espacios y quitamos ceros a la izquierda
+    // " 05:00 p.m. " -> "5:00pm"
+    let limpia = horaStr.toLowerCase().replace(/\./g, '').replace(/\s/g, '');
+    if (limpia.startsWith('0')) limpia = limpia.substring(1);
 
     const mapaOrden = {
-        "08:00am": 1, "09:00am": 2, "10:00am": 3, "11:00am": 4,
-        "12:00pm": 5, // MEDIODÍA
-        "01:00pm": 6, "02:00pm": 7, "03:00pm": 8, "04:00pm": 9,
-        "05:00pm": 10, "06:00pm": 11, "07:00pm": 12
+        "8:00am": 1, "9:00am": 2, "10:00am": 3, "11:00am": 4,
+        "12:00pm": 5, // Mediodía
+        "1:00pm": 6, "2:00pm": 7, "3:00pm": 8, "4:00pm": 9,
+        "5:00pm": 10, "6:00pm": 11, "7:00pm": 12
     };
 
-    return mapaOrden[horaLimpia] || 0;
+    return mapaOrden[limpia] || 0;
 }
 
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
-    listado.innerHTML = "<div class='loading'>Sincronizando con el reloj del servidor...</div>";
+    listado.innerHTML = "<div class='loading'>Sincronizando reloj...</div>";
     
     try {
-        // 1. OBTENER TODO EL HISTORIAL
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
             .eq('ruleta', ruleta);
 
         if (error || !data || data.length < 2) {
-            listado.innerHTML = "Esperando carga de datos históricos...";
+            listado.innerHTML = "Esperando datos...";
             return;
         }
 
-        // --- APLICACIÓN DE JERARQUÍA MANUAL ---
-        // Ordenamos primero por fecha y luego usamos nuestra función de prioridad
+        // ORDENAMIENTO DE HIERRO
         data.sort((a, b) => {
-            if (a.fecha > b.fecha) return -1;
-            if (a.fecha < b.fecha) return 1;
-            // Si la fecha es igual, comparamos los pesos numéricos (12pm=5, 1pm=6)
+            // 1. Comparar fechas (Texto ISO: 2026-03-30)
+            if (a.fecha !== b.fecha) return b.fecha.localeCompare(a.fecha);
+            
+            // 2. Si es la misma fecha, usar nuestra jerarquía limpia
             return obtenerPrioridadHora(b.hora) - obtenerPrioridadHora(a.hora);
         });
 
-        // 2. DETECTAR ÚLTIMO RESULTADO REAL
-        const ahora = new Date();
+        // Ahora 'data[0]' será SIEMPRE el sorteo más reciente cargado
         const ultimoResultado = data[0]; 
-
+        const ahora = new Date();
         const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
         const diaActualNombre = diasSemana[ahora.getDay()];
 
-        // --- LÓGICA DE SECUENCIA (PUNTUACIÓN POR "LLAMADO") ---
+        // ANALISIS DE SECUENCIA
         const pesos = {};
         const seguidores = [];
         
@@ -85,22 +84,21 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
 
         const sugeridos = Object.entries(pesos).sort((a,b) => b[1] - a[1]);
 
-        // --- RENDERIZADO ---
+        // RENDERIZADO
         if(ganadorTxt) ganadorTxt.innerText = sugeridos[0] ? sugeridos[0][0] : "---";
-
         const tripleta = sugeridos.slice(0, 3).map(s => s[0]);
         
         listado.innerHTML = `
             <div style="margin-bottom:15px; background:#222; padding:15px; border-radius:10px; border: 1px solid var(--oro);">
                 <small style="color:var(--oro); font-weight:bold;">PRONÓSTICO SEGÚN RELOJ</small>
                 <div style="font-size:1.8rem; font-weight:900; letter-spacing:5px;">
-                    ${tripleta.length >= 3 ? tripleta.join(" - ") : "Calculando..."}
+                    ${tripleta.length >= 3 ? tripleta.join(" - ") : "---"}
                 </div>
             </div>
             <div style="font-size:0.8rem; color:#888; background:#111; padding:10px; border-radius:5px;">
                 <strong>Último detectado:</strong> ${ultimoResultado.animal_numero} (${ultimoResultado.animal_nombre})<br>
                 <strong>Sorteo de las:</strong> ${ultimoResultado.hora}<br>
-                <strong>Día:</strong> ${diaActualNombre}
+                <strong>Día detectado:</strong> ${ultimoResultado.fecha === ahora.toISOString().split('T')[0] ? "HOY" : ultimoResultado.fecha}
             </div>
             <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         `;
@@ -117,7 +115,7 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
 
     } catch (err) {
         console.error(err);
-        listado.innerHTML = "Error al sincronizar datos.";
+        listado.innerHTML = "Error de sincronización.";
     }
 }
 
