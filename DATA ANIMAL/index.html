@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DATA ANIMAL | Inteligencia Predictiva</title>
+    <title>DATA ANIMAL | Inteligencia Estadística</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #fff; }
         * { box-sizing: border-box; }
         body { background: var(--fondo); color: var(--texto); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .container { max-width: 500px; width: 100%; }
-        header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid var(--oro); padding-bottom: 10px; }
+        header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--oro); padding-bottom: 10px; }
         h1 { font-size: 1.8rem; letter-spacing: 3px; color: var(--oro); text-transform: uppercase; margin: 0; }
         select { width: 100%; padding: 12px; background: var(--card); color: var(--oro); border: 1px solid var(--oro); border-radius: 8px; font-weight: bold; margin-bottom: 20px; outline: none; }
         .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #222; border-left: 4px solid var(--oro); }
         h2 { font-size: 0.8rem; color: var(--oro); text-transform: uppercase; margin: 0 0 10px 0; opacity: 0.8; }
         .piramide-visual { display: flex; flex-direction: column; align-items: center; font-family: monospace; font-size: 1.4rem; color: var(--oro); letter-spacing: 8px; line-height: 1.5; }
-        .grid-analisis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .mini-box { background: #1a1a1a; padding: 12px; border-radius: 8px; text-align: center; border: 1px solid #333; }
-        .destaque-tripleta { background: linear-gradient(145deg, #ffcc00, #b89600); color: #000; padding: 20px; border-radius: 12px; text-align: center; margin-top: 10px; box-shadow: 0 4px 15px rgba(255, 204, 0, 0.2); }
+        .destaque-tripleta { background: linear-gradient(145deg, #ffcc00, #b89600); color: #000; padding: 20px; border-radius: 12px; text-align: center; margin-top: 10px; }
         .numeros-tripleta { font-size: 1.8rem; font-weight: 900; letter-spacing: 5px; }
         .fila-stats { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.95rem; }
+        .mini-box { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #333; flex: 1; }
     </style>
 </head>
 <body>
@@ -45,7 +44,7 @@
             </div>
 
         <section class="card">
-            <h2>TOP 5 MÁS FRECUENTES</h2>
+            <h2>TOP FRECUENCIA</h2>
             <div id="lista-frecuentes"></div>
         </section>
     </div>
