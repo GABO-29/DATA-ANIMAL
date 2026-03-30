@@ -6,26 +6,29 @@
     <title>DATA ANIMAL | Inteligencia Estadística</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #fff; }
+        :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #fff; --rojo: #ff4444; }
         * { box-sizing: border-box; }
         body { background: var(--fondo); color: var(--texto); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; display: flex; justify-content: center; }
         .container { max-width: 500px; width: 100%; }
-        header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid var(--oro); padding-bottom: 10px; }
-        h1 { font-size: 1.8rem; letter-spacing: 3px; color: var(--oro); text-transform: uppercase; margin: 0; }
+        header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid var(--oro); padding-bottom: 10px; }
+        h1 { font-size: 1.8rem; letter-spacing: 3px; margin: 0; color: var(--oro); text-transform: uppercase; }
         select { width: 100%; padding: 12px; background: var(--card); color: var(--oro); border: 1px solid var(--oro); border-radius: 8px; font-weight: bold; margin-bottom: 20px; outline: none; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #222; border-left: 4px solid var(--oro); }
-        h2 { font-size: 0.8rem; color: var(--oro); text-transform: uppercase; margin: 0 0 10px 0; opacity: 0.8; }
-        .piramide-visual { display: flex; flex-direction: column; align-items: center; font-family: monospace; font-size: 1.4rem; color: var(--oro); letter-spacing: 8px; line-height: 1.5; }
-        .destaque-tripleta { background: linear-gradient(145deg, #ffcc00, #b89600); color: #000; padding: 20px; border-radius: 12px; text-align: center; margin-top: 10px; }
-        .numeros-tripleta { font-size: 1.8rem; font-weight: 900; letter-spacing: 5px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; border: 1px solid #222; position: relative; overflow: hidden; }
+        .card::before { content: ""; position: absolute; left: 0; top: 0; height: 100%; width: 4px; background: var(--oro); }
+        h2 { font-size: 0.85rem; color: var(--oro); text-transform: uppercase; margin-top: 0; opacity: 0.8; }
+        .dato-principal { font-size: 2.5rem; font-weight: 900; text-align: center; display: block; margin: 10px 0; }
         .fila-stats { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 0.95rem; }
-        .mini-box { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #333; flex: 1; }
+        .piramide-visual { display: flex; flex-direction: column; align-items: center; font-family: monospace; font-size: 1.4rem; color: var(--oro); letter-spacing: 8px; line-height: 1.5; }
+        .grid-vip { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .mini-card { background: #1a1a1a; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #333; }
+        .badge { background: var(--oro); color: #000; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .tripleta { font-size: 1.2rem; letter-spacing: 2px; color: var(--oro); font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
         <header><h1>DATA ANIMAL</h1></header>
-        
+
         <select id="filtro-ruleta" onchange="obtenerEstadisticas(this.value)">
             <option value="Lotto Activo">LOTTO ACTIVO</option>
             <option value="La Granjita">LA GRANJITA</option>
@@ -43,9 +46,9 @@
         <div id="panel-inteligencia">
             </div>
 
-        <section class="card">
-            <h2>TOP FRECUENCIA</h2>
-            <div id="lista-frecuentes"></div>
+        <section class="card" style="background: var(--oro); color: #000; border: none;">
+            <h2 style="color: #000;">EL MÁS SALIDOR (90 DÍAS)</h2>
+            <span id="dato-ganador" class="dato-principal">---</span>
         </section>
     </div>
 

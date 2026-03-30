@@ -2,14 +2,10 @@ const horarios = ["08:00 a.m.", "09:00 a.m.", "10:00 a.m.", "11:00 a.m.", "12:00
 
 function crearTabla() {
     const tbody = document.getElementById('tabla-body');
-    if(!tbody) return;
-    
     horarios.forEach((h, fIdx) => {
-        let fila = `<tr><td style="color:var(--oro); font-weight:bold; font-size:0.75rem; background:#111;">${h}</td>`;
+        let fila = `<tr><td style="color:var(--oro); font-size:0.7rem;">${h}</td>`;
         for (let cIdx = 0; cIdx < 7; cIdx++) {
-            fila += `<td><input type="text" class="cell" 
-                        data-fila="${fIdx}" data-col="${cIdx}" 
-                        placeholder="..." onpaste="manejarPegado(event)"></td>`;
+            fila += `<td><input type="text" class="cell" data-fila="${fIdx}" data-col="${cIdx}" data-hora="${h}" onpaste="manejarPegado(event)"></td>`;
         }
         tbody.innerHTML += fila + "</tr>";
     });
@@ -18,70 +14,44 @@ function crearTabla() {
 function manejarPegado(e) {
     e.preventDefault();
     const texto = (e.clipboardData || window.clipboardData).getData('text');
-    const filasExcel = texto.split(/\r?\n/);
+    const filas = texto.split(/\r?\n/);
     const fIni = parseInt(e.target.dataset.fila);
     const cIni = parseInt(e.target.dataset.col);
 
-    filasExcel.forEach((linea, i) => {
+    filas.forEach((linea, i) => {
         const celdas = linea.split('\t');
-        celdas.forEach((valor, j) => {
-            const destino = document.querySelector(`.cell[data-fila="${fIni + i}"][data-col="${cIni + j}"]`);
-            if (destino && valor.trim() !== "") {
-                destino.value = valor.trim().toUpperCase();
-            }
+        celdas.forEach((val, j) => {
+            const dest = document.querySelector(`.cell[data-fila="${fIni+i}"][data-col="${cIni+j}"]`);
+            if (dest) dest.value = val.trim();
         });
     });
 }
 
 async function enviarDatos() {
-    const fechaLunes = document.getElementById('fecha-lunes').value;
-    const ruletaOriginal = document.getElementById('ruleta-admin').value;
-    
-    if (!fechaLunes) return alert("¡Atención! Selecciona la fecha del lunes primero.");
+    const lunes = document.getElementById('fecha-lunes').value;
+    const ruleta = document.getElementById('ruleta-admin').value;
+    if (!lunes) return alert("Selecciona el lunes.");
 
     const inputs = document.querySelectorAll('.cell');
     let registros = [];
 
-    inputs.forEach(input => {
-        if (input.value.trim() !== "") {
-            // Cálculo preciso de la fecha
-            let f = new Date(fechaLunes + "T00:00:00");
-            f.setDate(f.getDate() + parseInt(input.dataset.col));
-            
-            let val = input.value.trim();
-            let espacioIdx = val.indexOf(" ");
-            
-            // Separación de número y nombre (ej: "17 PAVO")
-            let num = espacioIdx !== -1 ? val.substring(0, espacioIdx) : val;
-            let nom = espacioIdx !== -1 ? val.substring(espacioIdx + 1).toUpperCase() : "S/N";
-
+    inputs.forEach(i => {
+        if (i.value.trim()) {
+            let f = new Date(lunes + "T00:00:00");
+            f.setDate(f.getDate() + parseInt(i.dataset.col));
+            let val = i.value.trim();
             registros.push({
                 fecha: f.toISOString().split('T')[0],
-                hora: horarios[input.dataset.fila],
-                ruleta: ruletaOriginal.trim(), // Se guarda tal cual está en el select
-                animal_numero: num,
-                animal_nombre: nom
+                hora: i.dataset.hora,
+                ruleta: ruleta,
+                animal_numero: val.split(" ")[0],
+                animal_nombre: val.split(" ").slice(1).join(" ").toUpperCase() || "S/N"
             });
         }
     });
 
-    if (registros.length === 0) return alert("No hay datos escritos en la tabla.");
-
-    const btn = document.querySelector('.btn-save');
-    btn.disabled = true;
-    btn.innerText = "GUARDANDO EN LA NUBE...";
-
     const { error } = await supabaseClient.from('resultados').insert(registros);
-    
-    if (error) {
-        alert("Error de conexión: " + error.message);
-        btn.disabled = false;
-        btn.innerText = "Guardar y Actualizar Dashboard";
-    } else {
-        alert(`¡Todo listo! Se guardaron ${registros.length} resultados en ${ruletaOriginal}.`);
-        window.location.reload(); // Recarga para limpiar todo
-    }
+    if (error) alert("Error: " + error.message);
+    else alert("¡Data Animal Actualizada!");
 }
-
-// Iniciar tabla
 crearTabla();

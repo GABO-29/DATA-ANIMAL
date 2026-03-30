@@ -6,62 +6,37 @@
     <title>ADMIN | DATA ANIMAL</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --fondo: #0a0a0a; --oro: #ffcc00; --texto: #fff; --card: #141414; }
-        body { background: var(--fondo); color: var(--texto); font-family: sans-serif; padding: 20px; margin: 0; }
-        .admin-card { background: var(--card); padding: 25px; border-radius: 15px; border: 1px solid #333; max-width: 1100px; margin: auto; }
-        .header-admin { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 25px; align-items: flex-end; }
-        .input-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 200px; }
-        label { font-size: 0.75rem; color: var(--oro); font-weight: bold; text-transform: uppercase; }
-        input[type="date"], select { padding: 12px; background: #222; color: #fff; border: 1px solid #444; border-radius: 8px; outline: none; }
-        input:focus, select:focus { border-color: var(--oro); }
-        .scroll { overflow-x: auto; border-radius: 10px; border: 1px solid #222; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; background: #0d0d0d; }
-        th, td { border: 1px solid #222; padding: 12px; text-align: center; }
-        th { background: #1a1a1a; color: var(--oro); font-size: 0.7rem; }
-        .cell { width: 100%; background: transparent; border: none; color: #fff; text-align: center; text-transform: uppercase; font-size: 0.85rem; font-weight: bold; }
-        .cell:focus { background: #1a1a1a; outline: 1px solid var(--oro); }
-        .btn-save { width: 100%; padding: 20px; background: var(--oro); border: none; color: #000; font-weight: 900; font-size: 1.1rem; cursor: pointer; border-radius: 10px; margin-top: 25px; transition: 0.3s; text-transform: uppercase; }
-        .btn-save:hover { background: #e6b800; transform: translateY(-2px); }
+        :root { --fondo: #0a0a0a; --oro: #ffcc00; --texto: #fff; }
+        body { background: var(--fondo); color: var(--texto); font-family: sans-serif; padding: 10px; }
+        .admin-card { background: #141414; padding: 20px; border-radius: 12px; border: 1px solid #222; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th, td { border: 1px solid #333; padding: 10px; text-align: center; }
+        th { color: var(--oro); font-size: 0.75rem; text-transform: uppercase; }
+        input { width: 100%; background: transparent; border: none; color: #fff; text-align: center; text-transform: uppercase; }
+        .btn { width: 100%; padding: 15px; background: var(--oro); border: none; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 15px; }
+        .scroll { overflow-x: auto; margin-top: 15px; }
     </style>
 </head>
 <body>
     <div class="admin-card">
-        <h1 style="text-align:center; color:var(--oro); margin-bottom:30px;">CARGA DE RESULTADOS</h1>
-        
-        <div class="header-admin">
-            <div class="input-group">
-                <label>Lunes de la Semana</label>
-                <input type="date" id="fecha-lunes">
-            </div>
-            <div class="input-group">
-                <label>Seleccionar Ruleta</label>
-                <select id="ruleta-admin">
-                    <option value="Lotto Activo">LOTTO ACTIVO</option>
-                    <option value="La Granjita">LA GRANJITA</option>
-                    <option value="Selva Plus">SELVA PLUS</option>
-                    <option value="Guacharo Activo">GUACHARO ACTIVO</option>
-                    <option value="Guacharito">GUACHARITO</option>
-                    <option value="Lotto Rey">LOTTO REY</option>
-                </select>
-            </div>
+        <h2>CARGA DE DATOS</h2>
+        <div style="display:flex; gap:10px;">
+            <input type="date" id="fecha-lunes" style="background:#222; padding:10px; border-radius:5px;">
+            <select id="ruleta-admin" style="background:#222; color:#fff; padding:10px; flex:1; border-radius:5px;">
+                <option value="Lotto Activo">Lotto Activo</option>
+                <option value="La Granjita">La Granjita</option>
+                <option value="Selva Plus">Selva Plus</option>
+                <option value="Guacharo Activo">Guacharo Activo</option>
+            </select>
         </div>
-
         <div class="scroll">
             <table>
-                <thead>
-                    <tr>
-                        <th>HORA</th>
-                        <th>LUN</th><th>MAR</th><th>MIE</th><th>JUE</th><th>VIE</th><th>SAB</th><th>DOM</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-body">
-                    </tbody>
+                <thead><tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mie</th><th>Jue</th><th>Vie</th><th>Sab</th><th>Dom</th></tr></thead>
+                <tbody id="tabla-body"></tbody>
             </table>
         </div>
-
-        <button class="btn-save" onclick="enviarDatos()">Guardar y Actualizar Dashboard</button>
+        <button class="btn" onclick="enviarDatos()">GUARDAR SEMANA</button>
     </div>
-
     <script src="supabase-config.js"></script>
     <script src="admin.js"></script>
 </body>
