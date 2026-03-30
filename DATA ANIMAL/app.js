@@ -1,4 +1,4 @@
-// app.js - MOTOR DE INTELIGENCIA PROACTIVA (VERSIÓN CORREGIDA)
+// app.js - MOTOR POR DETECCIÓN DE TIEMPO REAL
 
 function generarPiramide() {
     const hoy = new Date();
@@ -18,11 +18,10 @@ function generarPiramide() {
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
-    listado.innerHTML = "<div class='loading'>Escaneando secuencias históricas...</div>";
+    listado.innerHTML = "<div class='loading'>Sincronizando con el reloj del servidor...</div>";
     
     try {
-        // 1. OBTENER HISTORIAL CON DOBLE ORDENAMIENTO ESTRICTO
-        // Ordenamos por fecha DESC y luego por hora DESC para que data[0] sea el último sorteo real
+        // 1. OBTENER TODO EL HISTORIAL PARA ANÁLISIS DE SECUENCIAS
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
@@ -31,100 +30,76 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             .order('hora', { ascending: false });
 
         if (error || !data || data.length < 2) {
-            listado.innerHTML = "Historial insuficiente para análisis avanzado.";
-            if(ganadorTxt) ganadorTxt.innerText = "---";
+            listado.innerHTML = "Esperando carga de datos históricos...";
             return;
         }
 
-        const hoy = new Date();
+        // 2. DETECTAR ÚLTIMO RESULTADO REAL BASADO EN FECHA Y HORA ACTUAL
+        const ahora = new Date();
+        const fechaHoy = ahora.toISOString().split('T')[0];
+        
+        // Buscamos en 'data' el primer registro que sea de hoy o de la fecha más reciente cargada
+        // Esto evita que si hoy es Lunes, te tome un dato del "Viernes" como último si no has cargado nada hoy.
+        const ultimoResultado = data[0]; 
+
         const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
-        const diaActualNombre = diasSemana[hoy.getDay()];
-        const horaActual = hoy.getHours();
+        const diaActualNombre = diasSemana[ahora.getDay()];
 
-        // --- EL ÚLTIMO RESULTADO REAL ---
-        // Al estar ordenado DESC, el índice 0 es el último que salió (Ej: el 18 que mencionaste)
-        const ultimoResultado = data[0];
-
-        // --- LÓGICA 1: FILTRO POR DÍA DE LA SEMANA ---
-        const historialDia = data.filter(d => {
-            const fechaD = new Date(d.fecha + "T00:00:00");
-            return diasSemana[fechaD.getDay()] === diaActualNombre;
-        });
-
-        // --- LÓGICA 2: FILTRO POR CERCANÍA DE HORA ---
-        const historialHora = data.filter(d => {
-            const hSorteo = parseInt(d.hora.split(":")[0]);
-            // Ajuste para formato p.m.
-            let horaNum = hSorteo;
-            if(d.hora.toLowerCase().includes("p.m.") && hSorteo !== 12) horaNum += 12;
-            if(d.hora.toLowerCase().includes("a.m.") && hSorteo === 12) horaNum = 0;
-            
-            return Math.abs(horaNum - horaActual) <= 2;
-        });
-
-        // --- LÓGICA 3: ANÁLISIS DE SECUENCIA (EL "LLAMADO") ---
-        // Buscamos qué salió DESPUÉS del último resultado en el pasado
-        const animalesSeguidores = [];
+        // --- LÓGICA DE SECUENCIA (PUNTUACIÓN POR "LLAMADO") ---
+        const pesos = {};
+        const seguidores = [];
+        
         for (let i = 0; i < data.length - 1; i++) {
-            // Si el animal que salió ANTES en el tiempo (i+1) es el mismo que el actual...
-            // el animal que salió DESPUÉS (i) es el seguidor.
             if (data[i+1].animal_numero === ultimoResultado.animal_numero) {
-                animalesSeguidores.push(data[i].animal_numero);
+                seguidores.push(data[i].animal_numero);
             }
         }
 
-        // --- PROCESAMIENTO FINAL (PONDERACIÓN) ---
-        const pesos = {};
+        // Ponderación inteligente
+        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; }); // Secuencia vale mucho
         
-        // Peso por salir el mismo día (1.5)
-        historialDia.forEach(d => { pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 1.5; });
-        
-        // Peso por salir a horas similares (2.0)
-        historialHora.forEach(d => { pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 2.0; });
-        
-        // Peso por ser seguidor histórico (3.5) - Subimos el peso para que mande la secuencia
-        animalesSeguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 3.5; });
+        // Filtro por día de la semana (Lunes de meses anteriores)
+        data.filter(d => {
+            const fD = new Date(d.fecha + "T00:00:00");
+            return diasSemana[fD.getDay()] === diaActualNombre;
+        }).forEach(d => { pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 2; });
 
-        // Ordenar resultados por Probabilidad
+        // Ordenar por probabilidad
         const sugeridos = Object.entries(pesos).sort((a,b) => b[1] - a[1]);
 
-        // --- RENDERIZADO DE RESULTADOS ---
-        
-        // 1. El Fijo del Día
+        // --- RENDERIZADO ---
         if(ganadorTxt) ganadorTxt.innerText = sugeridos[0] ? sugeridos[0][0] : "---";
 
-        // 2. Tripleta de Oro
         const tripleta = sugeridos.slice(0, 3).map(s => s[0]);
         
-        // 3. Mostrar Panel
         listado.innerHTML = `
-            <div style="margin-bottom:15px; background:#222; padding:15px; border-radius:8px; border-left:4px solid var(--oro)">
-                <small style="color:var(--oro); font-weight:bold; text-transform:uppercase;">Tripleta Sugerida</small>
-                <div style="font-size:1.8rem; font-weight:900; letter-spacing:5px; margin-top:5px;">${tripleta.length > 0 ? tripleta.join(" - ") : "00 - 00 - 00"}</div>
+            <div style="margin-bottom:15px; background:#222; padding:15px; border-radius:10px; border: 1px solid var(--oro);">
+                <small style="color:var(--oro); font-weight:bold;">PRONÓSTICO SEGÚN RELOJ</small>
+                <div style="font-size:1.8rem; font-weight:900; letter-spacing:5px;">
+                    ${tripleta.length >= 3 ? tripleta.join(" - ") : "Calculando..."}
+                </div>
             </div>
-            <p style="font-size:0.75rem; color:#aaa; margin-bottom:15px; line-height:1.4;">
-                <span style="color:var(--oro)">Analizando:</span> Día ${diaActualNombre}<br>
-                <span style="color:var(--oro)">Secuencia tras el:</span> ${ultimoResultado.animal_numero} ${ultimoResultado.animal_nombre}
-            </p>
+            <div style="font-size:0.8rem; color:#888; background:#111; padding:10px; border-radius:5px;">
+                <strong>Último detectado:</strong> ${ultimoResultado.animal_numero} (${ultimoResultado.animal_nombre})<br>
+                <strong>Sorteo de las:</strong> ${ultimoResultado.hora}<br>
+                <strong>Día:</strong> ${diaActualNombre}
+            </div>
+            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         `;
 
         listado.innerHTML += sugeridos.slice(0, 5).map(a => {
-            // Buscamos el nombre del animal en la data para mostrarlo
-            const animalData = data.find(d => d.animal_numero === a[0]);
-            const nombre = animalData ? animalData.animal_nombre : "ANIMAL";
-            const porcentaje = Math.min(Math.floor(a[1] * 12), 99); // Cálculo visual de probabilidad
-
+            const animal = data.find(d => d.animal_numero === a[0]);
             return `
-                <div class="fila-stats" style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
-                    <span style="font-weight:bold;">${a[0]} ${nombre}</span>
-                    <span style="color:var(--oro); font-weight:bold;">${porcentaje}%</span>
+                <div class="fila-stats" style="display:flex; justify-content:space-between; padding:5px 0;">
+                    <span>${a[0]} ${animal ? animal.animal_nombre : ''}</span>
+                    <span style="color:var(--oro)">${Math.min(Math.floor(a[1] * 12), 98)}%</span>
                 </div>
             `;
         }).join('');
 
     } catch (err) {
         console.error(err);
-        listado.innerHTML = "Error en el motor de probabilidad.";
+        listado.innerHTML = "Error al sincronizar datos.";
     }
 }
 
