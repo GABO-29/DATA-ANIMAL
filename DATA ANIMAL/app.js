@@ -15,31 +15,47 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
+// Función auxiliar para establecer la jerarquía: 12pm < 1pm < 6pm
+function obtenerValorHorario(horaStr) {
+    if (!horaStr) return 0;
+    let [tiempo, meridiano] = horaStr.toLowerCase().split(' ');
+    let [hh, mm] = tiempo.split(':').map(Number);
+    
+    // Convertimos a formato 24h para comparación matemática
+    if (meridiano.includes('a.m.') && hh === 12) hh = 0; // Medianoche
+    else if (meridiano.includes('p.m.') && hh !== 12) hh += 12; // De 1pm a 11pm
+    // El 12 p.m. (mediodía) se queda como 12, siendo menor que 13 (1 p.m.)
+    
+    return hh * 100 + mm; 
+}
+
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
     listado.innerHTML = "<div class='loading'>Sincronizando con el reloj del servidor...</div>";
     
     try {
-        // 1. OBTENER TODO EL HISTORIAL PARA ANÁLISIS DE SECUENCIAS
+        // 1. OBTENER TODO EL HISTORIAL
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
-            .eq('ruleta', ruleta)
-            .order('fecha', { ascending: false })
-            .order('hora', { ascending: false });
+            .eq('ruleta', ruleta);
 
         if (error || !data || data.length < 2) {
             listado.innerHTML = "Esperando carga de datos históricos...";
             return;
         }
 
-        // 2. DETECTAR ÚLTIMO RESULTADO REAL BASADO EN FECHA Y HORA ACTUAL
+        // 2. ORDENAMIENTO MANUAL POR JERARQUÍA (FECHA Y LUEGO HORA 24H)
+        data.sort((a, b) => {
+            if (a.fecha > b.fecha) return -1;
+            if (a.fecha < b.fecha) return 1;
+            // Si es la misma fecha, aplicamos la lógica: 12pm es menor a 1pm, 2pm... 6pm
+            return obtenerValorHorario(b.hora) - obtenerValorHorario(a.hora);
+        });
+
+        // 3. DETECTAR ÚLTIMO RESULTADO REAL
         const ahora = new Date();
-        const fechaHoy = ahora.toISOString().split('T')[0];
-        
-        // Buscamos en 'data' el primer registro que sea de hoy o de la fecha más reciente cargada
-        // Esto evita que si hoy es Lunes, te tome un dato del "Viernes" como último si no has cargado nada hoy.
         const ultimoResultado = data[0]; 
 
         const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
@@ -56,9 +72,8 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         }
 
         // Ponderación inteligente
-        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; }); // Secuencia vale mucho
+        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; });
         
-        // Filtro por día de la semana (Lunes de meses anteriores)
         data.filter(d => {
             const fD = new Date(d.fecha + "T00:00:00");
             return diasSemana[fD.getDay()] === diaActualNombre;
