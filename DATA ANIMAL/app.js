@@ -1,4 +1,4 @@
-// app.js - MOTOR DE PRECISIÓN ABSOLUTA
+// app.js - MOTOR DE PRECISIÓN PARA FORMATO YYYY-MM-DD
 
 function generarPiramide() {
     const hoy = new Date();
@@ -15,18 +15,17 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-// ESTA FUNCIÓN ES EL "FILTRO" QUE EVITA EL ERROR DE LAS IMÁGENES
+// 1. JERARQUÍA DE HORA: Convierte el texto en un número de prioridad real
 function obtenerPrioridadHora(horaStr) {
     if (!horaStr) return 0;
     
-    // Normalizamos: pasamos a minúsculas, quitamos puntos, quitamos espacios y quitamos ceros a la izquierda
-    // " 05:00 p.m. " -> "5:00pm"
+    // Normalización: " 05:00 p.m. " -> "5:00pm"
     let limpia = horaStr.toLowerCase().replace(/\./g, '').replace(/\s/g, '');
     if (limpia.startsWith('0')) limpia = limpia.substring(1);
 
     const mapaOrden = {
         "8:00am": 1, "9:00am": 2, "10:00am": 3, "11:00am": 4,
-        "12:00pm": 5, // Mediodía
+        "12:00pm": 5, // Mediodía real
         "1:00pm": 6, "2:00pm": 7, "3:00pm": 8, "4:00pm": 9,
         "5:00pm": 10, "6:00pm": 11, "7:00pm": 12
     };
@@ -37,35 +36,37 @@ function obtenerPrioridadHora(horaStr) {
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
-    listado.innerHTML = "<div class='loading'>Sincronizando reloj...</div>";
+    listado.innerHTML = "<div class='loading'>Sincronizando datos...</div>";
     
     try {
+        // Traemos todos los datos sin ordenarlos en la base de datos (lo haremos aquí)
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
             .eq('ruleta', ruleta);
 
         if (error || !data || data.length < 2) {
-            listado.innerHTML = "Esperando datos...";
+            listado.innerHTML = "Esperando carga de datos históricos...";
             return;
         }
 
-        // ORDENAMIENTO DE HIERRO
+        // 2. ORDENAMIENTO DE PRECISIÓN (FECHA Y LUEGO HORA)
         data.sort((a, b) => {
-            // 1. Comparar fechas (Texto ISO: 2026-03-30)
-            if (a.fecha !== b.fecha) return b.fecha.localeCompare(a.fecha);
-            
-            // 2. Si es la misma fecha, usar nuestra jerarquía limpia
+            // Primero comparamos la fecha (YYYY-MM-DD se compara bien como texto)
+            if (a.fecha !== b.fecha) {
+                return b.fecha.localeCompare(a.fecha); // La fecha más reciente primero
+            }
+            // Si la fecha es la misma, usamos nuestra jerarquía numérica de horas
             return obtenerPrioridadHora(b.hora) - obtenerPrioridadHora(a.hora);
         });
 
-        // Ahora 'data[0]' será SIEMPRE el sorteo más reciente cargado
+        // El primer elemento (index 0) es ahora, por fuerza, el último sorteo real
         const ultimoResultado = data[0]; 
         const ahora = new Date();
         const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
         const diaActualNombre = diasSemana[ahora.getDay()];
 
-        // ANALISIS DE SECUENCIA
+        // 3. LÓGICA DE SECUENCIA
         const pesos = {};
         const seguidores = [];
         
@@ -77,15 +78,18 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
 
         seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; });
         
+        // Filtro por día de la semana
         data.filter(d => {
-            const fD = new Date(d.fecha + "T00:00:00");
+            // Aseguramos que la fecha se lea correctamente para el día
+            const fD = new Date(d.fecha + "T00:00:00"); 
             return diasSemana[fD.getDay()] === diaActualNombre;
         }).forEach(d => { pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 2; });
 
         const sugeridos = Object.entries(pesos).sort((a,b) => b[1] - a[1]);
 
-        // RENDERIZADO
+        // 4. RENDERIZADO FINAL
         if(ganadorTxt) ganadorTxt.innerText = sugeridos[0] ? sugeridos[0][0] : "---";
+
         const tripleta = sugeridos.slice(0, 3).map(s => s[0]);
         
         listado.innerHTML = `
@@ -98,7 +102,7 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             <div style="font-size:0.8rem; color:#888; background:#111; padding:10px; border-radius:5px;">
                 <strong>Último detectado:</strong> ${ultimoResultado.animal_numero} (${ultimoResultado.animal_nombre})<br>
                 <strong>Sorteo de las:</strong> ${ultimoResultado.hora}<br>
-                <strong>Día detectado:</strong> ${ultimoResultado.fecha === ahora.toISOString().split('T')[0] ? "HOY" : ultimoResultado.fecha}
+                <strong>Fecha:</strong> ${ultimoResultado.fecha}
             </div>
             <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         `;
@@ -115,7 +119,7 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
 
     } catch (err) {
         console.error(err);
-        listado.innerHTML = "Error de sincronización.";
+        listado.innerHTML = "Error al sincronizar datos.";
     }
 }
 
