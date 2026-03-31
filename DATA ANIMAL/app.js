@@ -1,108 +1,125 @@
-// app.js - MOTOR DE INTELIGENCIA PREDICTIVA (Día Anterior + Bloques de Horario)
+// app.js - SISTEMA DE ALTA PRECISIÓN (BASES 100% + TRIPLETAS)
 
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
     
     try {
-        // Traemos los últimos 300 resultados para tener buena base de datos
         const { data: todos, error } = await supabaseClient
             .from('resultados')
             .select('*')
             .eq('ruleta', ruleta)
             .order('id', { ascending: false })
-            .limit(300);
+            .limit(600);
 
-        if (error || !todos || todos.length < 5) return;
+        if (error || !todos || todos.length < 10) return;
 
-        const ultimo = todos[0]; // El de hace minutos
-        const fechaUltimo = ultimo.fecha;
+        const ultimo = todos[0];
+        
+        // --- 1. LÓGICA DE LAS BASES "100%" (LOS 2 MÁS SEGUROS DEL DÍA) ---
+        const conteoGlobal = {};
+        todos.forEach(d => { conteoGlobal[d.animal_numero] = (conteoGlobal[d.animal_numero] || 0) + 1; });
+        
+        // Sacamos los 2 que más han salido en el historial reciente
+        const basesSeguras = Object.entries(conteoGlobal)
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 2)
+            .map(x => x[0]);
 
-        // 1. OBTENER EL ÚLTIMO DEL DÍA ANTERIOR
-        // Filtramos todos los que NO sean de la fecha del último para hallar el cierre previo
-        const dataDiaAnterior = todos.filter(d => d.fecha !== fechaUltimo);
-        const cierreAnterior = dataDiaAnterior.length > 0 ? dataDiaAnterior[0] : null;
-
-        // --- CÁLCULO DE PROBABILIDADES ---
-        const pesos = {};
-
-        // A. Lógica de Seguidores (¿Qué sale después de X?) -> Peso: 5
-        for (let i = 0; i < todos.length - 1; i++) {
-            if (todos[i+1].animal_numero === ultimo.animal_numero) {
-                let num = todos[i].animal_numero;
-                pesos[num] = (pesos[num] || 0) + 5;
+        // --- 2. TRIPLETAS FIJAS DEL DÍA (PARA COMBINAR) ---
+        // Usamos los seguidores del cierre de ayer + frecuencia semanal
+        const fechaAyer = todos.find(d => d.fecha !== ultimo.fecha)?.fecha;
+        const cierreAyer = todos.find(d => d.fecha === fechaAyer);
+        
+        const mapaFijo = {};
+        if (cierreAyer) {
+            for (let i = 0; i < todos.length - 1; i++) {
+                if (todos[i+1].animal_numero === cierreAyer.animal_numero) {
+                    mapaFijo[todos[i].animal_numero] = (mapaFijo[todos[i].animal_numero] || 0) + 1;
+                }
             }
         }
+        const tripletaFija = Object.entries(mapaFijo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
 
-        // B. Lógica del Cierre Anterior (Si el cierre ayer fue X, hoy suele salir Y) -> Peso: 3
-        if (cierreAnterior) {
-            todos.forEach((d, index) => {
-                if (index < todos.length - 1 && todos[index+1].animal_numero === cierreAnterior.animal_numero) {
-                    let num = d.animal_numero;
-                    pesos[num] = (pesos[num] || 0) + 3;
-                }
-            });
+        // --- 3. REACCIÓN DINÁMICA (POR SORTEO) ---
+        const mapaSorteo = {};
+        for (let i = 0; i < todos.length - 1; i++) {
+            if (todos[i+1].animal_numero === ultimo.animal_numero) {
+                mapaSorteo[todos[i].animal_numero] = (mapaSorteo[todos[i].animal_numero] || 0) + 1;
+            }
         }
+        const proximoSorteo = Object.entries(mapaSorteo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
 
-        const sugeridos = Object.entries(pesos).sort((a,b) => b[1] - a[1]);
-        const tripleta = sugeridos.slice(0, 3).map(s => s[0]);
-
-        // --- RENDERIZADO PRINCIPAL ---
-        if(ganadorTxt) ganadorTxt.innerText = tripleta[0] || "---";
+        // --- RENDERIZADO ---
+        if(ganadorTxt) ganadorTxt.innerText = tripletaFija[0] || "---";
 
         listado.innerHTML = `
-            <div style="margin-bottom:15px; background:#1a1a1a; padding:15px; border-radius:10px; border: 2px solid #d4af37;">
-                <div style="color:#d4af37; font-weight:bold; font-size:0.7rem;">PRÓXIMO SORTEO (PROYECCIÓN)</div>
-                <div style="font-size:2rem; font-weight:900; letter-spacing:3px;">${tripleta.join(" - ")}</div>
-                <small style="color:#666;">Basado en último: ${ultimo.animal_numero} y cierre anterior: ${cierreAnterior ? cierreAnterior.animal_numero : 'N/A'}</small>
+            <div style="margin-bottom:15px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center;">
+                <div style="font-weight:bold; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Bases Fijas (100% Combinables)</div>
+                <div style="font-size:2.5rem; font-weight:900; letter-spacing:10px;">
+                    ${basesSeguras.join(" - ")}
+                </div>
+                <div style="font-size:0.6rem; font-weight:bold; margin-top:5px;">COMBÍNALOS CON CUALQUIER OTRO NÚMERO</div>
+            </div>
+
+            <div style="margin-bottom:15px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #333;">
+                <div style="color:#d4af37; font-weight:bold; font-size:0.65rem; margin-bottom:8px;">TRIPLETAS DE PROYECCIÓN FIJA</div>
+                <div style="font-size:1.5rem; font-weight:bold; color:#fff; letter-spacing:4px; text-align:center;">
+                    ${tripletaFija.join(" | ")}
+                </div>
+            </div>
+
+            <div style="margin-bottom:15px; background:#111; padding:12px; border-radius:10px; border-left: 5px solid #00ff00;">
+                <div style="color:#00ff00; font-weight:bold; font-size:0.65rem;">CALIENTE PARA EL PRÓXIMO SORTEO</div>
+                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, se espera:</div>
+                <div style="font-size:1.4rem; font-weight:bold; color:#fff; letter-spacing:3px;">
+                    ${proximoSorteo.length > 0 ? proximoSorteo.join(" - ") : "Analizando..."}
+                </div>
             </div>
         `;
 
-        // --- SECCIÓN DE QUINIELAS / POLLAS (BLOQUES HORARIOS) ---
-        await generarSeccionPollas();
+        await generarSeccionPollasSeis();
 
     } catch (err) { console.error(err); }
 }
 
-async function generarSeccionPollas() {
-    const contenedorPollas = document.getElementById('seccion-pollas'); // Asegúrate de tener este ID en tu HTML
-    if (!contenedorPollas) return;
+async function generarSeccionPollasSeis() {
+    const cont = document.getElementById('seccion-pollas');
+    if (!cont) return;
 
     try {
-        const { data: global } = await supabaseClient.from('resultados').select('*').limit(500);
+        const { data: global } = await supabaseClient.from('resultados').select('*').limit(1000);
         
-        const filtrarBloque = (inicio, fin) => {
-            const mapa = {};
+        const analice = (h1, h2) => {
+            const m = {};
             global.forEach(d => {
-                const horaNum = parseInt(d.hora.split(':')[0]);
-                const esPM = d.hora.toLowerCase().includes('p.m');
-                const hora24 = (esPM && horaNum !== 12) ? horaNum + 12 : (!esPM && horaNum === 12 ? 0 : horaNum);
-                
-                if (hora24 >= inicio && hora24 <= fin) {
-                    mapa[d.animal_numero] = (mapa[d.animal_numero] || 0) + 1;
-                }
+                const h = d.hora.toLowerCase();
+                const n = parseInt(h.split(':')[0]);
+                const pm = h.includes('p.m');
+                const h24 = (pm && n !== 12) ? n + 12 : (!pm && n === 12 ? 0 : n);
+                if (h24 >= h1 && h24 <= h2) m[d.animal_numero] = (m[d.animal_numero] || 0) + 1;
             });
-            return Object.entries(mapa).sort((a,b) => b[1] - a[1]).slice(0, 10).map(x => x[0]);
+            return Object.entries(m).sort((a,b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
         };
 
-        const mañana = filtrarBloque(9, 13);
-        const tarde = filtrarBloque(15, 19);
+        const m6 = analice(9, 13);
+        const t6 = analice(15, 19);
 
-        contenedorPollas.innerHTML = `
-            <div style="margin-top:20px; background:#111; padding:15px; border-radius:10px; border-top: 4px solid #d4af37;">
-                <h4 style="color:#d4af37; margin-top:0;">DAtOS PARA POLLAS / QUINIELAS</h4>
+        cont.innerHTML = `
+            <div style="margin-top:20px; background:#000; border: 1px solid #d4af37; padding:15px; border-radius:10px;">
+                <h4 style="color:#d4af37; margin:0 0-10px 0; font-size:0.8rem; text-align:center; padding-bottom:10px;">POLLAS DE 6 ACIERTOS (MULTIRULETA)</h4>
                 
-                <div style="margin-bottom:15px;">
-                    <div style="color:#fff; font-size:0.8rem; margin-bottom:5px;">☀️ BLOQUE MAÑANA (9AM - 1PM)</div>
-                    <div style="background:#222; padding:8px; border-radius:5px; font-weight:bold; color:var(--oro); letter-spacing:2px;">
-                        ${mañana.join(" - ")}
+                <div style="margin-bottom:12px;">
+                    <small style="color:#666; font-size:0.55rem;">MAÑANA (9AM-1PM)</small>
+                    <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top:4px;">
+                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:4px 0; text-align:center; border-radius:3px; font-weight:bold;">${n}</div>`).join('')}
                     </div>
                 </div>
 
                 <div>
-                    <div style="color:#fff; font-size:0.8rem; margin-bottom:5px;">🌙 BLOQUE TARDE (3PM - 7PM)</div>
-                    <div style="background:#222; padding:8px; border-radius:5px; font-weight:bold; color:var(--oro); letter-spacing:2px;">
-                        ${tarde.join(" - ")}
+                    <small style="color:#666; font-size:0.55rem;">TARDE (3PM-7PM)</small>
+                    <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top:4px;">
+                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:4px 0; text-align:center; border-radius:3px; font-weight:bold;">${n}</div>`).join('')}
                     </div>
                 </div>
             </div>
