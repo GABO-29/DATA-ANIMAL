@@ -1,4 +1,4 @@
-// app.js - MOTOR POR ID (DETECCIÓN DE ÚLTIMO REGISTRO REAL)
+// app.js - MOTOR PREDICTIVO CON SALTO DE DÍA AUTOMÁTICO
 
 function generarPiramide() {
     const hoy = new Date();
@@ -18,86 +18,128 @@ function generarPiramide() {
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
-    listado.innerHTML = "<div class='loading'>Sincronizando con el servidor...</div>";
     
     try {
-        // 1. OBTENER DATOS FILTRADOS Y ORDENADOS POR ID (EL MÁS ALTO PRIMERO)
-        // Usar .order('id') es la solución definitiva al problema de las fechas/horas
-        const { data, error } = await supabaseClient
+        const { data: todos, error } = await supabaseClient
             .from('resultados')
             .select('*')
             .eq('ruleta', ruleta)
-            .order('id', { ascending: false });
+            .order('id', { ascending: false })
+            .limit(400);
 
-        if (error || !data || data.length < 2) {
-            listado.innerHTML = "Esperando carga de datos para " + ruleta + "...";
-            return;
-        }
+        if (error || !todos || todos.length < 5) return;
 
-        // 2. EL PRIMER REGISTRO (ÍNDICE 0) ES EL ÚLTIMO REAL CARGADO EN SUPABASE
-        const ultimoResultado = data[0]; 
-
-        const ahora = new Date();
-        const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
-        const diaActualNombre = diasSemana[ahora.getDay()];
-
-        // --- LÓGICA DE SECUENCIA (PUNTUACIÓN POR "LLAMADO") ---
-        const pesos = {};
-        const seguidores = [];
+        const ultimo = todos[0];
         
-        // Analizamos qué animal salió justo después del animal que es "último detectado"
-        for (let i = 0; i < data.length - 1; i++) {
-            if (data[i+1].animal_numero === ultimoResultado.animal_numero) {
-                seguidores.push(data[i].animal_numero);
+        // 1. LÓGICA DE SALTO DE DÍA AUTOMÁTICO
+        // Si el último sorteo fue a las 7pm, el sistema se prepara para el día siguiente
+        const esCierre = ultimo.hora.includes("07:00 p.m.");
+        let tituloSeccion = esCierre ? "PROYECCIÓN PARA MAÑANA" : "MEJOR PROYECCIÓN DEL DÍA";
+
+        // 2. IDENTIFICAR CIERRE ANTERIOR PARA LA ESTRATEGIA
+        const fechaReferencia = ultimo.fecha;
+        const dataHistorica = todos.filter(d => d.fecha !== fechaReferencia);
+        const cierreAnterior = dataHistorica.length > 0 ? dataHistorica[0] : null;
+
+        // 3. CÁLCULO DE PROBABILIDADES (PROYECCIÓN)
+        const pesos = {};
+        
+        // A. Por Repetición de Secuencia (Peso: 6)
+        for (let i = 0; i < todos.length - 1; i++) {
+            if (todos[i+1].animal_numero === ultimo.animal_numero) {
+                let num = todos[i].animal_numero;
+                pesos[num] = (pesos[num] || 0) + 6;
             }
         }
 
-        // Ponderación de probabilidades
-        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; });
-        
-        // Filtro histórico por día de la semana
-        data.filter(d => {
-            const fD = new Date(d.fecha + "T00:00:00");
-            return diasSemana[fD.getDay()] === diaActualNombre;
-        }).forEach(d => { pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 2; });
+        // B. Por Cierre de Día Anterior (Peso: 4)
+        if (cierreAnterior) {
+            todos.forEach((d, idx) => {
+                if (idx < todos.length - 1 && todos[idx+1].animal_numero === cierreAnterior.animal_numero) {
+                    pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 4;
+                }
+            });
+        }
 
-        // Ordenar por probabilidad
         const sugeridos = Object.entries(pesos).sort((a,b) => b[1] - a[1]);
-
-        // --- RENDERIZADO ---
-        if(ganadorTxt) ganadorTxt.innerText = sugeridos[0] ? sugeridos[0][0] : "---";
-
         const tripleta = sugeridos.slice(0, 3).map(s => s[0]);
-        
+
+        // --- RENDERIZADO DE PROYECCIONES ---
+        if(ganadorTxt) ganadorTxt.innerText = tripleta[0] || "---";
+
         listado.innerHTML = `
-            <div style="margin-bottom:15px; background:#222; padding:15px; border-radius:10px; border: 2px solid var(--oro);">
-                <small style="color:var(--oro); font-weight:bold;">PRONÓSTICO SEGÚN RELOJ</small>
-                <div style="font-size:1.8rem; font-weight:900; letter-spacing:5px;">
-                    ${tripleta.length >= 3 ? tripleta.join(" - ") : "Calculando..."}
+            <div style="margin-bottom:15px; background:#1a1a1a; padding:15px; border-radius:10px; border: 2px solid #d4af37;">
+                <div style="color:#d4af37; font-weight:bold; font-size:0.75rem;">${tituloSeccion}</div>
+                <div style="font-size:2rem; font-weight:900; letter-spacing:3px; color:#fff;">${tripleta.join(" - ")}</div>
+                <div style="font-size:0.7rem; color:#888; margin-top:5px;">
+                    Basado en: ${ultimo.animal_numero} (${ultimo.hora}) ${esCierre ? ' -> Salto a Mañana activo' : ''}
                 </div>
             </div>
-            <div style="font-size:0.8rem; color:#fff; background:#111; padding:10px; border-radius:5px; border-left: 4px solid var(--oro);">
-                <strong>ÚLTIMO DETECTADO:</strong> ${ultimoResultado.animal_numero} (${ultimoResultado.animal_nombre})<br>
-                <strong>Sorteo de las:</strong> ${ultimoResultado.hora}<br>
-                <strong>Fecha:</strong> ${ultimoResultado.fecha}
-            </div>
-            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         `;
 
+        // 4. TOP 5 DEL DÍA (LO QUE YA HACÍAS)
+        listado.innerHTML += `<div style="font-size:0.8rem; color:var(--oro); margin-bottom:10px; font-weight:bold;">TOP PROBABILIDADES:</div>`;
         listado.innerHTML += sugeridos.slice(0, 5).map(a => {
-            const animal = data.find(d => d.animal_numero === a[0]);
+            const anim = todos.find(d => d.animal_numero === a[0]);
             return `
-                <div class="fila-stats" style="display:flex; justify-content:space-between; padding:5px 0;">
-                    <span><b>${a[0]}</b> ${animal ? animal.animal_nombre : ''}</span>
-                    <span style="color:var(--oro); font-weight:bold;">${Math.min(Math.floor(a[1] * 12), 98)}%</span>
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
+                    <span><b style="color:#d4af37;">${a[0]}</b> ${anim ? anim.animal_nombre : ''}</span>
+                    <span style="font-weight:bold; color:#fff;">${Math.min(a[1] * 8, 99)}%</span>
                 </div>
             `;
         }).join('');
 
-    } catch (err) {
-        console.error(err);
-        listado.innerHTML = "Error al sincronizar datos.";
-    }
+        // 5. GENERAR QUINIELAS GLOBAL
+        await generarSeccionPollas();
+
+    } catch (err) { console.error(err); }
+}
+
+async function generarSeccionPollas() {
+    const contenedorPollas = document.getElementById('seccion-pollas');
+    if (!contenedorPollas) return;
+
+    try {
+        const { data: global } = await supabaseClient.from('resultados').select('*').limit(600);
+        
+        const filtrarBloque = (inicio, fin) => {
+            const mapa = {};
+            global.forEach(d => {
+                const h = d.hora.toLowerCase();
+                const horaNum = parseInt(h.split(':')[0]);
+                const esPM = h.includes('p.m');
+                const h24 = (esPM && horaNum !== 12) ? horaNum + 12 : (!esPM && horaNum === 12 ? 0 : horaNum);
+                
+                if (h24 >= inicio && h24 <= fin) {
+                    mapa[d.animal_numero] = (mapa[d.animal_numero] || 0) + 1;
+                }
+            });
+            return Object.entries(mapa).sort((a,b) => b[1] - a[1]).slice(0, 8).map(x => x[0]);
+        };
+
+        const mañana = filtrarBloque(8, 13);
+        const tarde = filtrarBloque(15, 19);
+
+        contenedorPollas.innerHTML = `
+            <div style="margin-top:20px; background:#111; padding:15px; border-radius:10px; border: 1px solid #333;">
+                <h4 style="color:#d4af37; margin: 0 0 15px 0; font-size:0.9rem; text-align:center;">DATOS PARA POLLAS (GLOBAL)</h4>
+                
+                <div style="margin-bottom:15px;">
+                    <div style="color:#aaa; font-size:0.7rem; margin-bottom:5px;">☀️ BLOQUE 09:00 AM - 01:00 PM</div>
+                    <div style="background:#222; padding:10px; border-radius:5px; font-weight:bold; color:#d4af37; text-align:center; letter-spacing:1px;">
+                        ${mañana.join(" - ")}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="color:#aaa; font-size:0.7rem; margin-bottom:5px;">🌙 BLOQUE 03:00 PM - 07:00 PM</div>
+                    <div style="background:#222; padding:10px; border-radius:5px; font-weight:bold; color:#d4af37; text-align:center; letter-spacing:1px;">
+                        ${tarde.join(" - ")}
+                    </div>
+                </div>
+            </div>
+        `;
+    } catch (e) { console.error(e); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
