@@ -1,4 +1,4 @@
-// app.js - MOTOR DE PRECISIÓN PARA FORMATO YYYY-MM-DD
+// app.js - MOTOR DE PRECISIÓN MATEMÁTICA (ANTI-ERROR DE FECHA)
 
 function generarPiramide() {
     const hoy = new Date();
@@ -15,111 +15,99 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-// 1. JERARQUÍA DE HORA: Convierte el texto en un número de prioridad real
-function obtenerPrioridadHora(horaStr) {
-    if (!horaStr) return 0;
-    
-    // Normalización: " 05:00 p.m. " -> "5:00pm"
-    let limpia = horaStr.toLowerCase().replace(/\./g, '').replace(/\s/g, '');
-    if (limpia.startsWith('0')) limpia = limpia.substring(1);
+// 1. CONVERTIR TODO A MINUTOS PARA COMPARAR NÚMEROS, NO TEXTO
+function calcularPuntajeAbsoluto(fechaStr, horaStr) {
+    if (!fechaStr || !horaStr) return 0;
 
-    const mapaOrden = {
-        "8:00am": 1, "9:00am": 2, "10:00am": 3, "11:00am": 4,
-        "12:00pm": 5, // Mediodía real
-        "1:00pm": 6, "2:00pm": 7, "3:00pm": 8, "4:00pm": 9,
-        "5:00pm": 10, "6:00pm": 11, "7:00pm": 12
+    // Convertimos fecha "2026-03-30" a milisegundos
+    const baseFecha = new Date(fechaStr + "T00:00:00").getTime();
+
+    // Convertimos hora a minutos adicionales
+    const limpia = horaStr.toLowerCase().replace(/\./g, '').replace(/\s/g, '');
+    const mapaMinutos = {
+        "08:00am": 480, "09:00am": 540, "10:00am": 600, "11:00am": 660,
+        "12:00pm": 720, "01:00pm": 780, "02:00pm": 840, "03:00pm": 900,
+        "04:00pm": 960, "05:00pm": 1020, "06:00pm": 1080, "07:00pm": 1140,
+        "8:00am": 480, "9:00am": 540, "1:00pm": 780, "2:00pm": 840, "3:00pm": 900,
+        "4:00pm": 960, "5:00pm": 1020, "6:00pm": 1080, "7:00pm": 1140
     };
 
-    return mapaOrden[limpia] || 0;
+    const minutosExtra = mapaMinutos[limpia] || 0;
+    return baseFecha + (minutosExtra * 60000); // Retorna timestamp exacto
 }
 
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
-    listado.innerHTML = "<div class='loading'>Sincronizando datos...</div>";
+    listado.innerHTML = "<div class='loading'>Sincronizando con precisión...</div>";
     
     try {
-        // Traemos todos los datos sin ordenarlos en la base de datos (lo haremos aquí)
         const { data, error } = await supabaseClient
             .from('resultados')
             .select('*')
             .eq('ruleta', ruleta);
 
         if (error || !data || data.length < 2) {
-            listado.innerHTML = "Esperando carga de datos históricos...";
+            listado.innerHTML = "No hay datos suficientes.";
             return;
         }
 
-        // 2. ORDENAMIENTO DE PRECISIÓN (FECHA Y LUEGO HORA)
-        data.sort((a, b) => {
-            // Primero comparamos la fecha (YYYY-MM-DD se compara bien como texto)
-            if (a.fecha !== b.fecha) {
-                return b.fecha.localeCompare(a.fecha); // La fecha más reciente primero
-            }
-            // Si la fecha es la misma, usamos nuestra jerarquía numérica de horas
-            return obtenerPrioridadHora(b.hora) - obtenerPrioridadHora(a.hora);
-        });
+        // 2. ORDENAMIENTO POR VALOR NUMÉRICO (EL NÚMERO MÁS GRANDE ES EL MÁS NUEVO)
+        const dataConPuntaje = data.map(item => ({
+            ...item,
+            puntaje: calcularPuntajeAbsoluto(item.fecha, item.hora)
+        }));
 
-        // El primer elemento (index 0) es ahora, por fuerza, el último sorteo real
-        const ultimoResultado = data[0]; 
-        const ahora = new Date();
-        const diasSemana = ["DOMINGO", "LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
-        const diaActualNombre = diasSemana[ahora.getDay()];
+        dataConPuntaje.sort((a, b) => b.puntaje - a.puntaje);
 
-        // 3. LÓGICA DE SECUENCIA
+        // El primero de la lista es el último real
+        const ultimoResultado = dataConPuntaje[0]; 
+        
+        // --- LÓGICA DE PROBABILIDAD ---
         const pesos = {};
         const seguidores = [];
         
-        for (let i = 0; i < data.length - 1; i++) {
-            if (data[i+1].animal_numero === ultimoResultado.animal_numero) {
-                seguidores.push(data[i].animal_numero);
+        // Buscamos en el historial original qué salió después de este animal
+        for (let i = 0; i < dataConPuntaje.length - 1; i++) {
+            if (dataConPuntaje[i+1].animal_numero === ultimoResultado.animal_numero) {
+                seguidores.push(dataConPuntaje[i].animal_numero);
             }
         }
 
-        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 4; });
-        
-        // Filtro por día de la semana
-        data.filter(d => {
-            // Aseguramos que la fecha se lea correctamente para el día
-            const fD = new Date(d.fecha + "T00:00:00"); 
-            return diasSemana[fD.getDay()] === diaActualNombre;
-        }).forEach(d => { pesos[d.animal_numero] = (pesos[d.animal_numero] || 0) + 2; });
+        seguidores.forEach(num => { pesos[num] = (pesos[num] || 0) + 5; });
 
         const sugeridos = Object.entries(pesos).sort((a,b) => b[1] - a[1]);
-
-        // 4. RENDERIZADO FINAL
-        if(ganadorTxt) ganadorTxt.innerText = sugeridos[0] ? sugeridos[0][0] : "---";
-
         const tripleta = sugeridos.slice(0, 3).map(s => s[0]);
-        
+
+        // 3. RENDERIZADO
+        if(ganadorTxt) ganadorTxt.innerText = tripleta[0] || "---";
+
         listado.innerHTML = `
-            <div style="margin-bottom:15px; background:#222; padding:15px; border-radius:10px; border: 1px solid var(--oro);">
-                <small style="color:var(--oro); font-weight:bold;">PRONÓSTICO SEGÚN RELOJ</small>
-                <div style="font-size:1.8rem; font-weight:900; letter-spacing:5px;">
-                    ${tripleta.length >= 3 ? tripleta.join(" - ") : "---"}
-                </div>
+            <div style="margin-bottom:15px; background:#222; padding:15px; border-radius:10px; border: 2px solid var(--oro);">
+                <div style="color:var(--oro); font-weight:bold; font-size:0.7rem;">SISTEMA DE DETECCIÓN ACTIVO</div>
+                <div style="font-size:1.8rem; font-weight:900;">${tripleta.length >= 3 ? tripleta.join(" - ") : "---"}</div>
             </div>
-            <div style="font-size:0.8rem; color:#888; background:#111; padding:10px; border-radius:5px;">
-                <strong>Último detectado:</strong> ${ultimoResultado.animal_numero} (${ultimoResultado.animal_nombre})<br>
-                <strong>Sorteo de las:</strong> ${ultimoResultado.hora}<br>
-                <strong>Fecha:</strong> ${ultimoResultado.fecha}
+            <div style="font-size:0.8rem; color:#fff; background:#d4af3733; padding:10px; border-radius:5px; border-left:4px solid var(--oro);">
+                <strong>ÚLTIMO REGISTRADO:</strong> ${ultimoResultado.animal_numero} (${ultimoResultado.animal_nombre})<br>
+                <strong>HORA:</strong> ${ultimoResultado.hora}<br>
+                <strong>FECHA:</strong> ${ultimoResultado.fecha}
             </div>
             <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
         `;
 
         listado.innerHTML += sugeridos.slice(0, 5).map(a => {
-            const animal = data.find(d => d.animal_numero === a[0]);
+            const anim = dataConPuntaje.find(d => d.animal_numero === a[0]);
             return `
-                <div class="fila-stats" style="display:flex; justify-content:space-between; padding:5px 0;">
-                    <span>${a[0]} ${animal ? animal.animal_nombre : ''}</span>
-                    <span style="color:var(--oro)">${Math.min(Math.floor(a[1] * 12), 98)}%</span>
+                <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222;">
+                    <span><b>${a[0]}</b> ${anim ? anim.animal_nombre : ''}</span>
+                    <span style="color:var(--oro); font-weight:bold;">${Math.min(a[1] * 10, 99)}%</span>
                 </div>
             `;
         }).join('');
 
     } catch (err) {
         console.error(err);
-        listado.innerHTML = "Error al sincronizar datos.";
+        listado.innerHTML = "Error crítico de conexión.";
     }
 }
 
