@@ -6,7 +6,7 @@
     <title>DATA ANIMAL | Pronósticos</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #ffffff; --gris: #888; }
+        :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #ffffff; --gris: #888; --verde: #00ff00; --rojo: #ff4444; }
         * { box-sizing: border-box; }
         body { background: var(--fondo); color: var(--texto); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { max-width: 500px; width: 100%; }
@@ -16,14 +16,17 @@
         .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         h2 { font-size: 0.9rem; color: var(--oro); text-transform: uppercase; letter-spacing: 1px; margin-top: 0; }
         .piramide-visual { display: flex; flex-direction: column; align-items: center; font-family: monospace; font-size: 1.5rem; color: var(--oro); letter-spacing: 10px; line-height: 1.6; }
-        .fila-stats { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #222; }
         
-        /* Estilo para el Dato Destacado */
+        /* Estilo para el Dato Destacado Principal */
         .destaque { background: var(--oro); color: #000; text-align: center; padding: 30px; border-radius: 12px; margin-top: 20px; }
         #dato-ganador { font-size: 4rem; font-weight: 900; margin-top: 10px; line-height: 1; }
 
-        /* Contenedor específico para la Polla de 6 */
+        /* Contenedor para las Pollas */
         #seccion-pollas { margin-bottom: 20px; }
+
+        /* Clases de apoyo para las nuevas estrategias en app.js */
+        .estrategia-b { border: 1px solid var(--verde) !important; }
+        .estrategia-c { border: 1px solid var(--rojo) !important; }
 
         @media (max-width: 480px) { h1 { font-size: 1.5rem; } .piramide-visual { font-size: 1.2rem; letter-spacing: 6px; } #dato-ganador { font-size: 3rem; } }
     </style>
@@ -46,17 +49,15 @@
             <div id="contenedor-piramide" class="piramide-visual"></div>
         </section>
 
-        <section class="card">
-            <h2>ANÁLISIS DE FRECUENCIA</h2>
-            <div id="lista-frecuentes"></div>
-        </section>
+        <section id="lista-frecuentes">
+            </section>
 
         <div id="seccion-pollas"></div>
 
         <section class="card destaque">
             <h2 style="color: #000; border: none; margin:0; font-weight: 800;">DATO DATA ANIMAL</h2>
             <div id="dato-ganador">---</div>
-            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.6rem;">Fijo recomendado por potencia</small>
+            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.6rem;">Fijo recomendado por potencia actual</small>
         </section>
     </div>
 
