@@ -7,33 +7,114 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #ffffff; --gris: #888; --verde: #00ff00; --rojo: #ff4444; }
-        * { box-sizing: border-box; }
-        body { background: var(--fondo); color: var(--texto); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { max-width: 500px; width: 100%; }
-        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid var(--oro); padding-bottom: 10px; }
-        h1 { font-size: 2rem; letter-spacing: 3px; margin: 0; color: var(--oro); }
-        select { width: 100%; padding: 12px; background: var(--card); color: var(--oro); border: 1px solid var(--oro); border-radius: 5px; font-weight: bold; margin-bottom: 20px; outline: none; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h2 { font-size: 0.9rem; color: var(--oro); text-transform: uppercase; letter-spacing: 1px; margin-top: 0; }
-        .piramide-visual { display: flex; flex-direction: column; align-items: center; font-family: monospace; font-size: 1.5rem; color: var(--oro); letter-spacing: 10px; line-height: 1.6; }
+        * { box-sizing: border-box; text-align: center; } /* CENTRADO UNIVERSAL */
         
+        body { 
+            background: var(--fondo); 
+            color: var(--texto); 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+        }
+
+        .container { max-width: 500px; width: 100%; }
+        
+        header { 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid var(--oro); 
+            padding-bottom: 10px; 
+            width: 100%;
+        }
+
+        h1 { font-size: 2rem; letter-spacing: 3px; margin: 0; color: var(--oro); }
+
+        select { 
+            width: 100%; 
+            padding: 12px; 
+            background: var(--card); 
+            color: var(--oro); 
+            border: 1px solid var(--oro); 
+            border-radius: 5px; 
+            font-weight: bold; 
+            margin-bottom: 20px; 
+            outline: none;
+            text-align-last: center; /* Centra el texto dentro del select */
+        }
+
+        .card { 
+            background: var(--card); 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h2 { 
+            font-size: 0.9rem; 
+            color: var(--oro); 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            margin-top: 0; 
+            width: 100%;
+        }
+
+        .piramide-visual { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            font-family: monospace; 
+            font-size: 1.5rem; 
+            color: var(--oro); 
+            letter-spacing: 10px; 
+            line-height: 1.6; 
+            width: 100%;
+        }
+
         /* Estilo para el Dato Destacado Principal */
-        .destaque { background: var(--oro); color: #000; text-align: center; padding: 30px; border-radius: 12px; margin-top: 20px; }
-        #dato-ganador { font-size: 4rem; font-weight: 900; margin-top: 10px; line-height: 1; }
+        .destaque { 
+            background: var(--oro); 
+            color: #000; 
+            padding: 30px; 
+            border-radius: 12px; 
+            margin-top: 20px; 
+            width: 100%;
+        }
+
+        #dato-ganador { 
+            font-size: 4.5rem; 
+            font-weight: 900; 
+            margin: 10px 0; 
+            line-height: 1; 
+            display: block;
+        }
 
         /* Contenedor para las Pollas */
-        #seccion-pollas { margin-bottom: 20px; }
+        #seccion-pollas { 
+            margin-bottom: 20px; 
+            width: 100%;
+        }
 
-        /* Clases de apoyo para las nuevas estrategias en app.js */
-        .estrategia-b { border: 1px solid var(--verde) !important; }
-        .estrategia-c { border: 1px solid var(--rojo) !important; }
+        /* Ajustes para los bloques generados por JS */
+        #lista-frecuentes { width: 100%; }
 
-        @media (max-width: 480px) { h1 { font-size: 1.5rem; } .piramide-visual { font-size: 1.2rem; letter-spacing: 6px; } #dato-ganador { font-size: 3rem; } }
+        @media (max-width: 480px) { 
+            h1 { font-size: 1.5rem; } 
+            .piramide-visual { font-size: 1.2rem; letter-spacing: 6px; } 
+            #dato-ganador { font-size: 3.5rem; } 
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <header><h1>DATA ANIMAL</h1></header>
+        <header>
+            <h1>DATA ANIMAL</h1>
+        </header>
         
         <select id="filtro-ruleta" onchange="obtenerEstadisticas(this.value)">
             <option value="Lotto Activo">LOTTO ACTIVO</option>
@@ -57,7 +138,7 @@
         <section class="card destaque">
             <h2 style="color: #000; border: none; margin:0; font-weight: 800;">DATO DATA ANIMAL</h2>
             <div id="dato-ganador">---</div>
-            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.6rem;">Fijo recomendado por potencia actual</small>
+            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.7rem;">Fijo recomendado por potencia actual</small>
         </section>
     </div>
 
