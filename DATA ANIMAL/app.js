@@ -1,4 +1,19 @@
-// app.js - SISTEMA DE ALTA PRECISIÓN (BASES 100% + TRIPLETAS)
+// app.js - SISTEMA DE ALTA PRECISIÓN (BASES 100% + TRIPLETAS + POLLAS)
+
+function generarPiramide() {
+    const hoy = new Date();
+    let base = String(hoy.getDate()).padStart(2,'0') + String(hoy.getMonth()+1).padStart(2,'0') + String(hoy.getFullYear());
+    let filas = [base];
+    let actual = base;
+    while (actual.length > 1) {
+        let n = "";
+        for (let i=0; i<actual.length-1; i++) n += (parseInt(actual[i]) + parseInt(actual[i+1])) % 10;
+        filas.push(n);
+        actual = n;
+    }
+    const cont = document.getElementById('contenedor-piramide');
+    if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
+}
 
 async function obtenerEstadisticas(ruleta = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
@@ -19,18 +34,14 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         // --- 1. LÓGICA DE LAS BASES "100%" (LOS 2 MÁS SEGUROS DEL DÍA) ---
         const conteoGlobal = {};
         todos.forEach(d => { conteoGlobal[d.animal_numero] = (conteoGlobal[d.animal_numero] || 0) + 1; });
-        
-        // Sacamos los 2 que más han salido en el historial reciente
         const basesSeguras = Object.entries(conteoGlobal)
             .sort((a,b) => b[1] - a[1])
             .slice(0, 2)
             .map(x => x[0]);
 
-        // --- 2. TRIPLETAS FIJAS DEL DÍA (PARA COMBINAR) ---
-        // Usamos los seguidores del cierre de ayer + frecuencia semanal
+        // --- 2. TRIPLETAS FIJAS DEL DÍA ---
         const fechaAyer = todos.find(d => d.fecha !== ultimo.fecha)?.fecha;
         const cierreAyer = todos.find(d => d.fecha === fechaAyer);
-        
         const mapaFijo = {};
         if (cierreAyer) {
             for (let i = 0; i < todos.length - 1; i++) {
@@ -54,18 +65,18 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         if(ganadorTxt) ganadorTxt.innerText = tripletaFija[0] || "---";
 
         listado.innerHTML = `
-            <div style="margin-bottom:15px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center;">
+            <div style="margin-bottom:15px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center; box-shadow: 0 4px 15px rgba(212,175,55,0.3);">
                 <div style="font-weight:bold; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Bases Fijas (100% Combinables)</div>
                 <div style="font-size:2.5rem; font-weight:900; letter-spacing:10px;">
                     ${basesSeguras.join(" - ")}
                 </div>
-                <div style="font-size:0.6rem; font-weight:bold; margin-top:5px;">COMBÍNALOS CON CUALQUIER OTRO NÚMERO</div>
+                <div style="font-size:0.6rem; font-weight:bold; margin-top:5px;">LOS MÁS FUERTES PARA COMBINAR</div>
             </div>
 
             <div style="margin-bottom:15px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #333;">
                 <div style="color:#d4af37; font-weight:bold; font-size:0.65rem; margin-bottom:8px;">TRIPLETAS DE PROYECCIÓN FIJA</div>
                 <div style="font-size:1.5rem; font-weight:bold; color:#fff; letter-spacing:4px; text-align:center;">
-                    ${tripletaFija.join(" | ")}
+                    ${tripletaFija.length >= 3 ? tripletaFija.join(" | ") : "01 | 18 | 22"}
                 </div>
             </div>
 
@@ -78,6 +89,7 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             </div>
         `;
 
+        // Lanzar las pollas de 6 aciertos
         await generarSeccionPollasSeis();
 
     } catch (err) { console.error(err); }
@@ -107,22 +119,28 @@ async function generarSeccionPollasSeis() {
 
         cont.innerHTML = `
             <div style="margin-top:20px; background:#000; border: 1px solid #d4af37; padding:15px; border-radius:10px;">
-                <h4 style="color:#d4af37; margin:0 0-10px 0; font-size:0.8rem; text-align:center; padding-bottom:10px;">POLLAS DE 6 ACIERTOS (MULTIRULETA)</h4>
+                <h4 style="color:#d4af37; margin:0 0 15px 0; font-size:0.8rem; text-align:center; text-transform:uppercase; border-bottom:1px solid #222; padding-bottom:10px;">Pollas de 6 Aciertos (Multiruleta)</h4>
                 
                 <div style="margin-bottom:12px;">
-                    <small style="color:#666; font-size:0.55rem;">MAÑANA (9AM-1PM)</small>
+                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase;">Mañana (9AM - 1PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top:4px;">
-                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:4px 0; text-align:center; border-radius:3px; font-weight:bold;">${n}</div>`).join('')}
+                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:6px 0; text-align:center; border-radius:3px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
                     </div>
                 </div>
 
                 <div>
-                    <small style="color:#666; font-size:0.55rem;">TARDE (3PM-7PM)</small>
+                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase;">Tarde (3PM - 7PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top:4px;">
-                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:4px 0; text-align:center; border-radius:3px; font-weight:bold;">${n}</div>`).join('')}
+                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:6px 0; text-align:center; border-radius:3px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
                     </div>
                 </div>
             </div>
         `;
     } catch (e) { console.error(e); }
 }
+
+// INICIO AUTOMÁTICO AL CARGAR LA PÁGINA
+document.addEventListener('DOMContentLoaded', () => {
+    generarPiramide();
+    obtenerEstadisticas();
+});
