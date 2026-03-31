@@ -50,19 +50,25 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
                 }
             }
         }
-        const tripletaFija = Object.entries(mapaFijo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+        let tripletaFija = Object.entries(mapaFijo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+        if (tripletaFija.length < 3) tripletaFija = ["12", "31", "15"];
 
-        // --- 3. REACCIÓN DINÁMICA (POR SORTEO) ---
+        // --- 3. REACCIÓN DINÁMICA (POR SORTEO) - CORREGIDO PARA EVITAR "ANALIZANDO..." ---
         const mapaSorteo = {};
         for (let i = 0; i < todos.length - 1; i++) {
             if (todos[i+1].animal_numero === ultimo.animal_numero) {
                 mapaSorteo[todos[i].animal_numero] = (mapaSorteo[todos[i].animal_numero] || 0) + 1;
             }
         }
-        const proximoSorteo = Object.entries(mapaSorteo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+        let proximoSorteo = Object.entries(mapaSorteo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+        
+        // Si no hay datos previos del animal que acaba de salir, rellena con los más frecuentes de la ruleta
+        if (proximoSorteo.length === 0) {
+            proximoSorteo = Object.entries(conteoGlobal).sort((a,b) => b[1] - a[1]).slice(2, 5).map(x => x[0]);
+        }
 
         // --- RENDERIZADO ---
-        if(ganadorTxt) ganadorTxt.innerText = tripletaFija[0] || "---";
+        if(ganadorTxt) ganadorTxt.innerText = basesSeguras[0] || "---";
 
         listado.innerHTML = `
             <div style="margin-bottom:15px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center; box-shadow: 0 4px 15px rgba(212,175,55,0.3);">
@@ -76,7 +82,7 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             <div style="margin-bottom:15px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #333;">
                 <div style="color:#d4af37; font-weight:bold; font-size:0.65rem; margin-bottom:8px;">TRIPLETAS DE PROYECCIÓN FIJA</div>
                 <div style="font-size:1.5rem; font-weight:bold; color:#fff; letter-spacing:4px; text-align:center;">
-                    ${tripletaFija.length >= 3 ? tripletaFija.join(" | ") : "01 | 18 | 22"}
+                    ${tripletaFija.join(" | ")}
                 </div>
             </div>
 
@@ -84,12 +90,12 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
                 <div style="color:#00ff00; font-weight:bold; font-size:0.65rem;">CALIENTE PARA EL PRÓXIMO SORTEO</div>
                 <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, se espera:</div>
                 <div style="font-size:1.4rem; font-weight:bold; color:#fff; letter-spacing:3px;">
-                    ${proximoSorteo.length > 0 ? proximoSorteo.join(" - ") : "Analizando..."}
+                    ${proximoSorteo.join(" - ")}
                 </div>
             </div>
         `;
 
-        // Lanzar las pollas de 6 aciertos
+        // Lanzar las pollas de 6 aciertos (Global)
         await generarSeccionPollasSeis();
 
     } catch (err) { console.error(err); }
@@ -100,7 +106,14 @@ async function generarSeccionPollasSeis() {
     if (!cont) return;
 
     try {
-        const { data: global } = await supabaseClient.from('resultados').select('*').limit(1000);
+        // Obtenemos los últimos 1000 resultados de TODAS las ruletas para la Polla Global
+        const { data: global, error } = await supabaseClient
+            .from('resultados')
+            .select('*')
+            .order('id', { ascending: false })
+            .limit(1000);
+
+        if (error || !global) return;
         
         const analice = (h1, h2) => {
             const m = {};
@@ -109,8 +122,13 @@ async function generarSeccionPollasSeis() {
                 const n = parseInt(h.split(':')[0]);
                 const pm = h.includes('p.m');
                 const h24 = (pm && n !== 12) ? n + 12 : (!pm && n === 12 ? 0 : n);
-                if (h24 >= h1 && h24 <= h2) m[d.animal_numero] = (m[d.animal_numero] || 0) + 1;
+                
+                // Filtramos por bloque horario sin importar la ruleta
+                if (h24 >= h1 && h24 <= h2) {
+                    m[d.animal_numero] = (m[d.animal_numero] || 0) + 1;
+                }
             });
+            // Ordenamos por frecuencia y devolvemos los 6 mejores
             return Object.entries(m).sort((a,b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
         };
 
@@ -119,21 +137,22 @@ async function generarSeccionPollasSeis() {
 
         cont.innerHTML = `
             <div style="margin-top:20px; background:#000; border: 1px solid #d4af37; padding:15px; border-radius:10px;">
-                <h4 style="color:#d4af37; margin:0 0 15px 0; font-size:0.8rem; text-align:center; text-transform:uppercase; border-bottom:1px solid #222; padding-bottom:10px;">Pollas de 6 Aciertos (Multiruleta)</h4>
+                <h4 style="color:#d4af37; margin:0 0 15px 0; font-size:0.8rem; text-align:center; text-transform:uppercase; border-bottom:1px solid #222; padding-bottom:10px;">Polla de 6 Aciertos (Datos Fijos)</h4>
                 
                 <div style="margin-bottom:12px;">
-                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase;">Mañana (9AM - 1PM)</small>
+                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase;">Bloque Mañana (9AM - 1PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top:4px;">
-                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:6px 0; text-align:center; border-radius:3px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
+                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; text-align:center; border-radius:3px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
                     </div>
                 </div>
 
                 <div>
-                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase;">Tarde (3PM - 7PM)</small>
+                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase;">Bloque Tarde (3PM - 7PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px; margin-top:4px;">
-                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:6px 0; text-align:center; border-radius:3px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
+                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; text-align:center; border-radius:3px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
                     </div>
                 </div>
+                <p style="color:#444; font-size:0.5rem; text-align:center; margin-top:10px;">* Análisis basado en Lotto Activo, Selva Plus y La Granjita</p>
             </div>
         `;
     } catch (e) { console.error(e); }
