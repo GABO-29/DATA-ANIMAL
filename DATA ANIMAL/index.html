@@ -44,6 +44,38 @@
             text-align-last: center; /* Centra el texto dentro del select */
         }
 
+        /* Estilos para los botones de navegación de día */
+        .nav-dias {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .btn-dia {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: 0.3s;
+            font-size: 0.8rem;
+        }
+
+        #btn-hoy {
+            background: var(--oro);
+            color: #000;
+            border: none;
+        }
+
+        #btn-manana {
+            background: var(--card);
+            color: var(--oro);
+            border: 1px solid var(--oro);
+        }
+
         .card { 
             background: var(--card); 
             border-radius: 12px; 
@@ -124,6 +156,11 @@
             <option value="Guacharito">GUACHARITO</option>
             <option value="Lotto Rey">LOTTO REY</option>
         </select>
+
+        <div class="nav-dias">
+            <button id="btn-hoy" class="btn-dia" onclick="cambiarDia(0)">Ver Hoy</button>
+            <button id="btn-manana" class="btn-dia" onclick="cambiarDia(1)">Mañana VIP</button>
+        </div>
 
         <section class="card">
             <h2>PIRÁMIDE DE HOY</h2>
