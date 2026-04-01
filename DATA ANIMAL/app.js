@@ -157,8 +157,11 @@ async function generarSeccionPollasSeis(diaSemana, globalData, ruletaActual) {
     const cont = document.getElementById('seccion-pollas');
     if (!cont) return;
 
-    // --- BLOQUEO DE SEGURIDAD ---
-    const hoyStr = new Date().toISOString().split('T')[0];
+    // --- BLOQUEO DE SEGURIDAD BASADO EN FECHA REAL ---
+    const hoy = new Date();
+    const hoyStr = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, '0') + "-" + String(hoy.getDate()).padStart(2, '0');
+    
+    // Filtramos para saber si ya existen resultados cargados para HOY en esta ruleta
     const resultadosHoyRuleta = globalData.filter(d => d.fecha === hoyStr && d.ruleta === ruletaActual);
     
     const tieneManana = resultadosHoyRuleta.some(d => d.hora.includes('9:00'));
@@ -185,7 +188,8 @@ async function generarSeccionPollasSeis(diaSemana, globalData, ruletaActual) {
     const t6 = analice(15, 19).filter(n => !m6.includes(n)).slice(0, 6);
 
     const renderLista = (lista, activo) => {
-        if (!activo && diaOffset === 0) return `<div style="color:#666; font-style:italic; font-size:0.7rem; padding:10px;">ESPERANDO SORTEO INICIAL...</div>`;
+        // Si no hay resultados de hoy para ese bloque y estamos viendo el día actual (offset 0), bloqueamos.
+        if (!activo && diaOffset === 0) return `<div style="color:#666; font-style:italic; font-size:0.7rem; padding:10px; border:1px dashed #333; border-radius:8px;">ESPERANDO SORTEO INICIAL DEL DÍA...</div>`;
         return `
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
                 ${lista.map(n => `<div style="background:#222; color:#d4af37; font-size:0.9rem; padding:10px 0; border-radius:6px; font-weight:900; border:1px solid #333;">${n}</div>`).join('')}
