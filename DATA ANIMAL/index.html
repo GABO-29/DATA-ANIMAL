@@ -129,7 +129,6 @@
             font-weight: bold;
         }
 
-        /* Estilo para el Dato Destacado Principal */
         .destaque { 
             background: linear-gradient(145deg, var(--oro), #d4aa00); 
             color: #000; 
@@ -154,19 +153,8 @@
             text-shadow: 2px 2px 0px rgba(255,255,255,0.2);
         }
 
-        /* Contenedor para las Pollas y Listados */
         #seccion-pollas { width: 100%; }
         #lista-frecuentes { width: 100%; }
-
-        /* Estilos de etiquetas internas generadas por JS */
-        .tag-estrategia {
-            font-size: 0.65rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-            display: block;
-            letter-spacing: 1px;
-        }
 
         @media (max-width: 480px) { 
             h1 { font-size: 1.6rem; } 
@@ -223,29 +211,37 @@
     <script src="app.js"></script>
     
     <script>
-        // Inicialización al cargar la página
-        document.addEventListener('DOMContentLoaded', () => {
-            // Sincronización inicial
-            if(typeof generarPiramide === "function") generarPiramide();
-            if(typeof obtenerEstadisticas === "function") obtenerEstadisticas("Lotto Activo");
-        });
-
-        // Función para actualizar el título de la pirámide visualmente según el día
+        // Función para actualizar la UI local al cambiar de día
         function actualizarTituloPiramide(offset) {
             const titulo = document.getElementById('titulo-piramide');
             if(titulo) {
                 titulo.innerText = offset === 1 ? "PIRÁMIDE DE MAÑANA VIP" : "PIRÁMIDE DE HOY";
             }
+            
+            // Mostrar mensaje de carga breve en la sección de pollas mientras el app.js procesa
+            const pollasCont = document.getElementById('seccion-pollas');
+            if(pollasCont) {
+                pollasCont.innerHTML = '<div style="color:#ffcc00; font-size:0.7rem; padding:20px;">VERIFICANDO SORTEOS...</div>';
+            }
         }
         
-        // Interceptor para actualizar la UI local al cambiar de día
-        const originalCambiarDia = window.cambiarDia;
+        // Sobrescribimos/Envolvemos la función cambiarDia que viene de app.js
+        const funcionOriginalCambiarDia = window.cambiarDia;
         window.cambiarDia = function(offset) {
             actualizarTituloPiramide(offset);
-            if(typeof originalCambiarDia === "function") {
-                originalCambiarDia(offset);
+            if(typeof funcionOriginalCambiarDia === "function") {
+                funcionOriginalCambiarDia(offset);
             }
         };
+
+        // Inicialización al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            if(typeof generarPiramide === "function") generarPiramide();
+            if(typeof obtenerEstadisticas === "function") {
+                const ruletaInicial = document.getElementById('filtro-ruleta').value;
+                obtenerEstadisticas(ruletaInicial);
+            }
+        });
     </script>
 </body>
 </html>
