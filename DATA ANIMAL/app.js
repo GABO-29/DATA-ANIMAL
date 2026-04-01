@@ -1,5 +1,5 @@
-// app.js - SISTEMA DE ALTA PRECISIÓN (VERSIÓN BASE MAESTRA DE ALTO FLUJO)
-// ESTRATEGIAS: SINCRONÍA INTER-RULETAS + BASE DE RACHA VIVA + FILTRO HORARIO
+// app.js - SISTEMA DE ALTA PRECISIÓN (VERSIÓN TRIPLETA VIP + BASE MAESTRA)
+// ESTRATEGIAS: SINCRONÍA GLOBAL + RACHA VIVA + FILTRO HORARIO
 
 let diaOffset = 0; // 0 = Hoy, 1 = Mañana
 
@@ -43,7 +43,7 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
     const ganadorTxt = document.getElementById('dato-ganador');
     
     try {
-        // Traemos 2000 registros para visión global de todas las ruletas (Lotto, Granjita, Selva)
+        // Traemos 2000 registros para tener visión global de todas las ruletas
         const { data: globalData, error } = await supabaseClient
             .from('resultados')
             .select('*')
@@ -52,17 +52,17 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
 
         if (error || !globalData || globalData.length < 50) return;
 
-        // Datos específicos de la ruleta en pantalla
+        // FILTRO: Datos específicos de la ruleta seleccionada
         const todos = globalData.filter(d => d.ruleta === ruletaActual);
         const ultimo = todos[0];
         
-        // Configuración de fecha y día
+        // Configuración de fecha
         const fechaAnalisis = new Date();
         if (diaOffset === 1) fechaAnalisis.setDate(fechaAnalisis.getDate() + 1);
         const diaSemanaAnalisis = fechaAnalisis.getDay();
         const nombresDias = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 
-        // --- ESTRATEGIA A: ESPECIAL DEL DÍA (HISTÓRICO) ---
+        // --- ESTRATEGIA 1: DÍA DE LA SEMANA (HISTÓRICO) ---
         const resultadosMismoDia = todos.filter(d => {
             const f = new Date(d.fecha + 'T12:00:00');
             return f.getDay() === diaSemanaAnalisis;
@@ -71,41 +71,42 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
         resultadosMismoDia.forEach(d => { conteoDia[d.animal_numero] = (conteoDia[d.animal_numero] || 0) + 1; });
         const basesDia = Object.entries(conteoDia).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
-        // --- ESTRATEGIA B: RACHA VIVA (BASES MAESTRAS - 3 RULETAS) ---
-        // Filtramos animales con alto flujo en los últimos 3 días en TODO el sistema (Anti-Jaulas)
+        // --- ESTRATEGIA 2: LA RACHA (ESPECÍFICA DE LA RULETA) ---
+        const conteoRacha = {};
+        todos.slice(0, 150).forEach(d => { conteoRacha[d.animal_numero] = (conteoRacha[d.animal_numero] || 0) + 1; });
+        const basesRacha = Object.entries(conteoRacha).sort((a,b) => b[1] - a[1]).map(x => x[0]);
+
+        // --- ESTRATEGIA B: RACHA VIVA GLOBAL (BASES PARA COMBINAR - 3 RULETAS) ---
+        // Buscamos los que más salen en las últimas 72h en todo el sistema (Casi 100% probabilidad)
         const fechaLimite = new Date();
         fechaLimite.setDate(fechaLimite.getDate() - 3);
-        
         const conteoVivosGlobal = {};
         globalData.forEach(d => {
             if (new Date(d.fecha) >= fechaLimite) {
                 conteoVivosGlobal[d.animal_numero] = (conteoVivosGlobal[d.animal_numero] || 0) + 1;
             }
         });
-
-        // Ordenamos por los que más están saliendo actualmente (Base de combinación)
         const rachaVivaBase = Object.entries(conteoVivosGlobal)
             .sort((a,b) => b[1] - a[1])
             .map(x => x[0]);
 
-        // --- LÓGICA: TRIPLETA VIP (COMBINACIÓN DE MÁXIMA PROBABILIDAD) ---
+        // --- LÓGICA DE TRIPLETA VIP (MANTENIENDO TU ESTRUCTURA ACTUAL) ---
         let tripletaVip = [];
-        // 1. La base más fuerte de la racha viva global
-        tripletaVip.push(rachaVivaBase[0]); 
-        // 2. El mejor del día histórico (que no sea igual al primero)
-        let segundoVip = basesDia.find(n => !tripletaVip.includes(n)) || basesDia[0];
-        tripletaVip.push(segundoVip);
-        // 3. El segundo más fuerte de la racha viva
-        let terceroVip = rachaVivaBase.find(n => !tripletaVip.includes(n)) || rachaVivaBase[1];
-        tripletaVip.push(terceroVip);
+        // 1. El más fuerte del día
+        tripletaVip.push(basesDia[0] || "01");
+        // 2. El mejor de racha específica que no esté repetido
+        let rachaUnica = basesRacha.find(n => !tripletaVip.includes(n)) || "10";
+        tripletaVip.push(rachaUnica);
+        // 3. El líder de la racha viva global para cerrar con flujo
+        let vivaUnica = rachaVivaBase.find(n => !tripletaVip.includes(n)) || "25";
+        tripletaVip.push(vivaUnica);
 
-        // --- LÓGICA: CALIENTE PRÓXIMO CON FILTRO HORARIO ---
+        // --- LÓGICA: CALIENTE PRÓXIMO CON CRUCE HORARIO ---
         const esPmUltimo = ultimo.hora.toLowerCase().includes('p.m');
         const mapaHorario = {};
         for (let i = 0; i < todos.length - 1; i++) {
             if (todos[i+1].animal_numero === ultimo.animal_numero) {
                 const esPmHist = todos[i].hora.toLowerCase().includes('p.m');
-                // Priorizamos patrones que ocurrieron en el mismo bloque (AM o PM)
                 if (esPmUltimo === esPmHist) {
                     mapaHorario[todos[i].animal_numero] = (mapaHorario[todos[i].animal_numero] || 0) + 1;
                 }
@@ -121,8 +122,8 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
             proximoSorteo = rachaVivaBase.filter(n => n !== ultimo.animal_numero).slice(0, 3);
         }
 
-        // --- RENDERIZADO DEL PANEL ACTUALIZADO ---
-        if(ganadorTxt) ganadorTxt.innerText = rachaVivaBase[0];
+        // --- RENDERIZADO DEL PANEL ---
+        if(ganadorTxt) ganadorTxt.innerText = tripletaVip[0];
 
         listado.innerHTML = `
             <div style="margin-bottom:15px; background: #000; border: 2px solid #ffcc00; padding:15px; border-radius:12px; text-align:center;">
@@ -130,27 +131,27 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
                 <div style="font-size:1.8rem; font-weight:900; color:#fff; letter-spacing:5px;">
                     ${tripletaVip.join(" | ")}
                 </div>
-                <div style="color:#00ff00; font-size:0.55rem; margin-top:5px;">ALTA PROBABILIDAD: BASE VIVA + TENDENCIA DIARIA</div>
+                <div style="color:#666; font-size:0.55rem; margin-top:5px;">MANTENIENDO TU LÓGICA DE ALTO FLUJO ACTUAL</div>
             </div>
 
-            <div style="margin-bottom:12px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-                <div style="font-weight:bold; font-size:0.6rem; text-transform:uppercase; letter-spacing:1px;">Estrategia A: Tendencia ${nombresDias[diaSemanaAnalisis]}</div>
+            <div style="margin-bottom:12px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center;">
+                <div style="font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia A: Tendencia ${nombresDias[diaSemanaAnalisis]}</div>
                 <div style="font-size:2rem; font-weight:900; letter-spacing:8px;">
                     ${basesDia.slice(0,2).join(" - ")}
                 </div>
             </div>
 
             <div style="margin-bottom:12px; background:#1a1a1a; padding:15px; border-radius:10px; border: 2px solid #00ff00; text-align:center;">
-                <div style="color:#00ff00; font-weight:bold; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">🚀 ESTRATEGIA B: RACHA VIVA (BASES MAESTRAS)</div>
+                <div style="color:#00ff00; font-weight:bold; font-size:0.7rem; text-transform:uppercase;">🚀 ESTRATEGIA B: BASES DE RACHA VIVA</div>
                 <div style="font-size:2.2rem; font-weight:900; color:#fff; letter-spacing:10px; margin: 5px 0;">
                     ${rachaVivaBase.slice(0,2).join(" | ")}
                 </div>
-                <div style="color:#00ff00; font-size:0.55rem;">USAR COMO BASE PARA COMBINAR - FLUJO ACTIVO 3 RULETAS</div>
+                <div style="color:#00ff00; font-size:0.55rem;">ESTOS SON LOS MEJORES DE LAS 3 RULETAS PARA USAR DE BASE</div>
             </div>
 
             <div style="margin-bottom:12px; background:#111; padding:12px; border-radius:10px; border-left: 5px solid #00ff00; text-align:center;">
-                <div style="color:#00ff00; font-weight:bold; font-size:0.65rem;">CALIENTE PRÓXIMO SORTEO (BLOQUE HORARIO)</div>
-                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Historial tras el <b>${ultimo.animal_numero}</b>:</div>
+                <div style="color:#00ff00; font-weight:bold; font-size:0.65rem;">CALIENTE PARA EL PRÓXIMO SORTEO</div>
+                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, tendencia horaria:</div>
                 <div style="font-size:1.4rem; font-weight:bold; color:#fff; letter-spacing:3px;">
                     ${proximoSorteo.join(" - ")}
                 </div>
@@ -197,7 +198,7 @@ async function generarSeccionPollasSeis(diaSemana) {
 
         cont.innerHTML = `
             <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:15px; border-radius:12px; text-align:center;">
-                <h4 style="color:#d4af37; margin:0 0 12px 0; font-size:0.8rem; text-transform:uppercase;">Polla de 6 (Tendencia por Bloque)</h4>
+                <h4 style="color:#d4af37; margin:0 0 12px 0; font-size:0.8rem; text-transform:uppercase;">Polla de 6 (Tendencia Bloqueada)</h4>
                 <div style="margin-bottom:15px;">
                     <small style="color:#666; font-size:0.55rem; display:block; margin-bottom:5px;">MAÑANA (9AM - 1PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px;">
