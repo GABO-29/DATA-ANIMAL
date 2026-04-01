@@ -157,16 +157,16 @@ async function generarSeccionPollasSeis(diaSemana, globalData, ruletaActual) {
     const cont = document.getElementById('seccion-pollas');
     if (!cont) return;
 
-    // --- BLOQUEO DE SEGURIDAD BASADO EN FECHA REAL ---
+    // --- 1. DETECCIÓN DE FECHA REAL PARA BLOQUEO ---
     const hoy = new Date();
     const hoyStr = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, '0') + "-" + String(hoy.getDate()).padStart(2, '0');
     
-    // Filtramos para saber si ya existen resultados cargados para HOY en esta ruleta
     const resultadosHoyRuleta = globalData.filter(d => d.fecha === hoyStr && d.ruleta === ruletaActual);
     
     const tieneManana = resultadosHoyRuleta.some(d => d.hora.includes('9:00'));
     const tieneTarde = resultadosHoyRuleta.some(d => d.hora.includes('3:00'));
 
+    // --- 2. FUNCIÓN DE ANÁLISIS RESTRINGIDA ---
     const analice = (h1, h2) => {
         const m = {};
         globalData.forEach(d => {
@@ -184,34 +184,39 @@ async function generarSeccionPollasSeis(diaSemana, globalData, ruletaActual) {
         return Object.entries(m).sort((a,b) => b[1] - a[1]).map(x => x[0]);
     };
 
-    const m6 = analice(9, 13).slice(0, 6);
-    const t6 = analice(15, 19).filter(n => !m6.includes(n)).slice(0, 6);
+    // --- 3. RENDERIZADO CON LÓGICA DE SEGURIDAD ---
+    const renderLista = (h1, h2, activo, excluir = []) => {
+        // Bloqueo: Si es hoy (offset 0) y el bloque no está activo, NO calculamos nada.
+        if (diaOffset === 0 && !activo) {
+            return `<div style="color:#ffcc00; background: rgba(255,204,0,0.1); font-style:italic; font-size:0.75rem; padding:15px; border:1px dashed #555; border-radius:10px; font-weight:bold;">⚠️ ESPERANDO SORTEO INICIAL...</div>`;
+        }
 
-    const renderLista = (lista, activo) => {
-        // Si no hay resultados de hoy para ese bloque y estamos viendo el día actual (offset 0), bloqueamos.
-        if (!activo && diaOffset === 0) return `<div style="color:#666; font-style:italic; font-size:0.7rem; padding:10px; border:1px dashed #333; border-radius:8px;">ESPERANDO SORTEO INICIAL DEL DÍA...</div>`;
+        // Si pasó el filtro, realizamos el cálculo de los 6 animales
+        const lista = analice(h1, h2).filter(n => !excluir.includes(n)).slice(0, 6);
+        
         return `
-            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
-                ${lista.map(n => `<div style="background:#222; color:#d4af37; font-size:0.9rem; padding:10px 0; border-radius:6px; font-weight:900; border:1px solid #333;">${n}</div>`).join('')}
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;">
+                ${lista.map(n => `<div style="background:#222; color:#d4af37; font-size:1.1rem; padding:12px 0; border-radius:8px; font-weight:900; border:1px solid #333; box-shadow: inset 0 0 10px #000;">${n}</div>`).join('')}
             </div>
         `;
     };
 
+    // Calculamos los números solo para la lógica de exclusión si es necesario, pero dentro del render
     cont.innerHTML = `
-        <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:15px; border-radius:12px; text-align:center;">
-            <h4 style="color:#d4af37; margin:0 0 15px 0; font-size:0.85rem; text-transform:uppercase; font-weight:900;">🔥 POLLA DE 6 (TENDENCIA BLOQUEADA)</h4>
+        <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:20px; border-radius:15px; text-align:center; box-shadow: 0 0 20px rgba(212,175,55,0.2);">
+            <h4 style="color:#d4af37; margin:0 0 20px 0; font-size:0.9rem; text-transform:uppercase; font-weight:900; letter-spacing:1px;">🔥 POLLA DE 6 (TENDENCIA BLOQUEADA)</h4>
             
-            <div style="margin-bottom:20px;">
-                <div style="color:#00ff00; font-size:0.6rem; font-weight:bold; text-transform:uppercase; margin-bottom:8px;">🎯 BLOQUE MAÑANA (9AM - 1PM)</div>
-                ${renderLista(m6, tieneManana)}
+            <div style="margin-bottom:25px;">
+                <div style="color:#00ff00; font-size:0.65rem; font-weight:bold; text-transform:uppercase; margin-bottom:12px; letter-spacing:1px;">🎯 BLOQUE MAÑANA (9AM - 1PM)</div>
+                ${renderLista(9, 13, tieneManana)}
             </div>
 
             <div>
-                <div style="color:#00ff00; font-size:0.6rem; font-weight:bold; text-transform:uppercase; margin-bottom:8px;">🎯 BLOQUE TARDE (3PM - 7PM)</div>
-                ${renderLista(t6, tieneTarde)}
+                <div style="color:#00ff00; font-size:0.65rem; font-weight:bold; text-transform:uppercase; margin-bottom:12px; letter-spacing:1px;">🎯 BLOQUE TARDE (3PM - 7PM)</div>
+                ${renderLista(15, 19, tieneTarde)}
             </div>
             
-            <div style="margin-top:10px; color:#555; font-size:0.5rem; text-transform:uppercase;">Estrategia: Frecuencia Horaria + Repique Global</div>
+            <div style="margin-top:15px; color:#444; font-size:0.55rem; text-transform:uppercase; font-weight:bold;">Estrategia: Frecuencia Horaria + Repique Global</div>
         </div>
     `;
 }
