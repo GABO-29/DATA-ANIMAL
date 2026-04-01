@@ -1,12 +1,11 @@
-// app.js - SISTEMA DE ALTA PRECISIÓN COMPARATIVO (DÍA vs RACHA vs FRÍOS)
-// VERSIÓN ACTUALIZADA: ANTI-REPETICIÓN + FILTRO DE BLOQUE HORARIO
+// app.js - SISTEMA DE ALTA PRECISIÓN (VERSIÓN TRIPLETA DE ALTO FLUJO)
+// ESTRATEGIAS: SINCRONÍA INTER-RULETAS + ANTI-JAULA + FILTRO HORARIO
 
 let diaOffset = 0; // 0 = Hoy, 1 = Mañana
 
 function cambiarDia(nuevoOffset) {
     diaOffset = nuevoOffset;
     
-    // Actualizar estilo visual de los botones
     const btnHoy = document.getElementById('btn-hoy');
     const btnManana = document.getElementById('btn-manana');
     
@@ -24,7 +23,7 @@ function cambiarDia(nuevoOffset) {
 
 function generarPiramide() {
     const fecha = new Date();
-    if (diaOffset === 1) fecha.setDate(fecha.getDate() + 1); // Adelantar si es mañana
+    if (diaOffset === 1) fecha.setDate(fecha.getDate() + 1);
     
     let base = String(fecha.getDate()).padStart(2,'0') + String(fecha.getMonth()+1).padStart(2,'0') + String(fecha.getFullYear());
     let filas = [base];
@@ -39,24 +38,27 @@ function generarPiramide() {
     if(cont) cont.innerHTML = filas.map(f => `<div>${f}</div>`).join('');
 }
 
-async function obtenerEstadisticas(ruleta = "Lotto Activo") {
+async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
     const listado = document.getElementById('lista-frecuentes');
     const ganadorTxt = document.getElementById('dato-ganador');
     
     try {
-        const { data: todos, error } = await supabaseClient
+        // Traemos 2000 registros para tener visión global de todas las ruletas
+        const { data: globalData, error } = await supabaseClient
             .from('resultados')
             .select('*')
-            .eq('ruleta', ruleta)
             .order('id', { ascending: false })
-            .limit(1000);
+            .limit(2000);
 
-        if (error || !todos || todos.length < 20) return;
+        if (error || !globalData || globalData.length < 50) return;
 
+        // FILTRO 1: Datos específicos de la ruleta seleccionada
+        const todos = globalData.filter(d => d.ruleta === ruletaActual);
         const ultimo = todos[0];
+        
+        // Configuración de fecha
         const fechaAnalisis = new Date();
         if (diaOffset === 1) fechaAnalisis.setDate(fechaAnalisis.getDate() + 1);
-        
         const diaSemanaAnalisis = fechaAnalisis.getDay();
         const nombresDias = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 
@@ -69,40 +71,64 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         resultadosMismoDia.forEach(d => { conteoDia[d.animal_numero] = (conteoDia[d.animal_numero] || 0) + 1; });
         const basesDia = Object.entries(conteoDia).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
-        // --- ESTRATEGIA 2: LA RACHA (ÚLTIMOS 150 SORTEOS) ---
+        // --- ESTRATEGIA 2: LA RACHA (ÚLTIMOS 150) ---
         const conteoRacha = {};
         todos.slice(0, 150).forEach(d => { conteoRacha[d.animal_numero] = (conteoRacha[d.animal_numero] || 0) + 1; });
         const basesRacha = Object.entries(conteoRacha).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
-        // --- ESTRATEGIA 3: LOS "FRÍOS" ---
+        // --- ESTRATEGIA 3: LOS FRÍOS (PARA EL PANEL SECUNDARIO) ---
         const recientes = new Set(todos.slice(0, 100).map(d => d.animal_numero));
-        const conteoGlobal = {};
-        todos.forEach(d => { conteoGlobal[d.animal_numero] = (conteoGlobal[d.animal_numero] || 0) + 1; });
-        const frios = Object.entries(conteoGlobal)
+        const conteoGlobalRuleta = {};
+        todos.forEach(d => { conteoGlobalRuleta[d.animal_numero] = (conteoGlobalRuleta[d.animal_numero] || 0) + 1; });
+        const frios = Object.entries(conteoGlobalRuleta)
             .filter(x => !recientes.has(x[0]))
             .sort((a,b) => b[1] - a[1])
             .map(x => x[0]);
 
-        // --- LÓGICA DE TRIPLETA VIP SIN REPETIDOS (REPOTENCIADA) ---
-        let tripletaVip = [];
-        // 1. Mejor del día
-        tripletaVip.push(basesDia[0] || "01");
-        // 2. Mejor de racha que no sea el anterior
-        let rachaUnica = basesRacha.find(n => !tripletaVip.includes(n)) || "10";
-        tripletaVip.push(rachaUnica);
-        // 3. Mejor frío que no esté repetido
-        let frioUnico = frios.find(n => !tripletaVip.includes(n)) || "25";
-        tripletaVip.push(frioUnico);
+        // --- LÓGICA: TRIPLETA VIP DE ALTO FLUJO (ANTI-JAULA) ---
+        // 1. Identificar animales "vivos" (mínimo 2 salidas en los últimos 3 días en CUALQUIER ruleta)
+        const fechaLimite = new Date();
+        fechaLimite.setDate(fechaLimite.getDate() - 3);
+        const animalesVivos = {};
+        globalData.forEach(d => {
+            if (new Date(d.fecha) >= fechaLimite) {
+                animalesVivos[d.animal_numero] = (animalesVivos[d.animal_numero] || 0) + 1;
+            }
+        });
+        const listaVivos = Object.keys(animalesVivos).filter(num => animalesVivos[num] >= 2);
 
-        // --- LÓGICA DE REACCIÓN DINÁMICA (CALIENTE PRÓXIMO - SIN REPETIR EL ÚLTIMO) ---
-        const mapaSorteo = {};
+        // 2. Cruzar con la tendencia del día (Sincronía)
+        let tripletaVip = [];
+        // Primer favorito: El más vivo que también sea tendencia hoy
+        tripletaVip.push(basesDia.find(n => listaVivos.includes(n)) || basesDia[0]);
+        // Segundo: El mejor de la racha que esté vivo
+        tripletaVip.push(basesRacha.find(n => listaVivos.includes(n) && !tripletaVip.includes(n)) || basesRacha[0]);
+        // Tercero: El que más está repicando en otras ruletas actualmente
+        const repiqueGlobal = {};
+        globalData.slice(0, 200).forEach(d => { repiqueGlobal[d.animal_numero] = (repiqueGlobal[d.animal_numero] || 0) + 1; });
+        const masRepicado = Object.entries(repiqueGlobal)
+            .sort((a,b) => b[1] - a[1])
+            .find(x => !tripletaVip.includes(x[0]) && listaVivos.includes(x[0]));
+        tripletaVip.push(masRepicado ? masRepicado[0] : basesDia[1]);
+
+        // --- LÓGICA: CALIENTE PRÓXIMO CON CRUCE HORARIO ---
+        const horaUltimo = ultimo.hora.split(':')[0]; // Ejemplo "10"
+        const esPmUltimo = ultimo.hora.toLowerCase().includes('p.m');
+        
+        const mapaHorario = {};
         for (let i = 0; i < todos.length - 1; i++) {
+            // Buscamos si el animal salió e inmediatamente después en el historial
             if (todos[i+1].animal_numero === ultimo.animal_numero) {
-                mapaSorteo[todos[i].animal_numero] = (mapaSorteo[todos[i].animal_numero] || 0) + 1;
+                const horaHist = todos[i].hora.split(':')[0];
+                const esPmHist = todos[i].hora.toLowerCase().includes('p.m');
+                // Si coinciden en ser mañana o tarde, tiene más peso
+                if (esPmUltimo === esPmHist) {
+                    mapaHorario[todos[i].animal_numero] = (mapaHorario[todos[i].animal_numero] || 0) + 1;
+                }
             }
         }
-        let proximoSorteo = Object.entries(mapaSorteo)
-            .filter(x => x[0] !== ultimo.animal_numero) // Filtro para no sugerir el que acaba de salir
+        let proximoSorteo = Object.entries(mapaHorario)
+            .filter(x => x[0] !== ultimo.animal_numero)
             .sort((a,b) => b[1] - a[1])
             .slice(0, 3)
             .map(x => x[0]);
@@ -111,34 +137,34 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             proximoSorteo = basesRacha.filter(n => n !== ultimo.animal_numero).slice(0, 3);
         }
 
-        // --- RENDERIZADO DEL PANEL COMPARATIVO ---
-        if(ganadorTxt) ganadorTxt.innerText = basesDia[0] || "---";
+        // --- RENDERIZADO ---
+        if(ganadorTxt) ganadorTxt.innerText = tripletaVip[0];
 
         listado.innerHTML = `
             <div style="margin-bottom:15px; background: #000; border: 2px solid #ffcc00; padding:15px; border-radius:12px; text-align:center;">
-                <div style="color:#ffcc00; font-weight:bold; font-size:0.7rem; text-transform:uppercase; margin-bottom:5px;">👑 TRIPLETA VIP ${nombresDias[diaSemanaAnalisis]}</div>
+                <div style="color:#ffcc00; font-weight:bold; font-size:0.7rem; text-transform:uppercase; margin-bottom:5px;">👑 TRIPLETA VIP ${nombresDias[diaSemanaAnalisis]} (ALTO FLUJO)</div>
                 <div style="font-size:1.8rem; font-weight:900; color:#fff; letter-spacing:5px;">
                     ${tripletaVip.join(" | ")}
                 </div>
-                <div style="color:#666; font-size:0.55rem; margin-top:5px;">ANÁLISIS DE ALTA PRECISIÓN SIN REPETIDOS</div>
+                <div style="color:#00ff00; font-size:0.55rem; margin-top:5px;">ANALIZADO: SINCRONÍA GLOBAL + FILTRO ANTI-JAULA</div>
             </div>
 
-            <div style="margin-bottom:12px; background: #d4af37; padding:15px; border-radius:10px; color:#000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align:center;">
-                <div style="font-weight:bold; font-size:0.6rem; text-transform:uppercase; letter-spacing:1px;">Estrategia A: Especial ${nombresDias[diaSemanaAnalisis]}</div>
+            <div style="margin-bottom:12px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center;">
+                <div style="font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia A: Tendencia ${nombresDias[diaSemanaAnalisis]}</div>
                 <div style="font-size:2rem; font-weight:900; letter-spacing:8px;">
                     ${basesDia.slice(0,2).join(" - ")}
                 </div>
             </div>
 
             <div style="margin-bottom:12px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #00ff00; text-align:center;">
-                <div style="color:#00ff00; font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia B: Racha Últimos Sorteos</div>
+                <div style="color:#00ff00; font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia B: Racha Viva</div>
                 <div style="font-size:1.6rem; font-weight:bold; color:#fff; letter-spacing:5px;">
                     ${basesRacha.slice(0,2).join(" - ")}
                 </div>
             </div>
 
             <div style="margin-bottom:12px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #ff4444; text-align:center;">
-                <div style="color:#ff4444; font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia C: Animales Fríos (Pendientes)</div>
+                <div style="color:#ff4444; font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia C: Animales Fríos (Jaulas)</div>
                 <div style="font-size:1.6rem; font-weight:bold; color:#fff; letter-spacing:5px;">
                     ${frios.slice(0,2).join(" - ")}
                 </div>
@@ -146,16 +172,9 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
 
             <div style="margin-bottom:12px; background:#111; padding:12px; border-radius:10px; border-left: 5px solid #00ff00; text-align:center;">
                 <div style="color:#00ff00; font-weight:bold; font-size:0.65rem;">CALIENTE PARA EL PRÓXIMO SORTEO</div>
-                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, se espera:</div>
+                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, se espera por horario:</div>
                 <div style="font-size:1.4rem; font-weight:bold; color:#fff; letter-spacing:3px;">
                     ${proximoSorteo.join(" - ")}
-                </div>
-            </div>
-
-            <div style="background:#000; padding:12px; border-radius:10px; border: 1px solid #d4af37; text-align:center;">
-                <div style="color:#d4af37; font-weight:bold; font-size:0.6rem; text-transform:uppercase; margin-bottom:5px;">Tripleta Maestra Única (A+B+C)</div>
-                <div style="font-size:1.5rem; font-weight:900; color:#fff; letter-spacing:4px;">
-                    ${tripletaVip.join(" | ")}
                 </div>
             </div>
         `;
@@ -195,29 +214,22 @@ async function generarSeccionPollasSeis(diaSemana) {
             return Object.entries(m).sort((a,b) => b[1] - a[1]).map(x => x[0]);
         };
 
-        const m6Raw = analice(9, 13);
-        const t6Raw = analice(15, 19);
-
-        // Bloque Mañana: 6 animales únicos
-        const m6 = m6Raw.slice(0, 6);
-        // Bloque Tarde: 6 animales únicos que no estén en mañana para dar variedad
-        const t6 = t6Raw.filter(n => !m6.includes(n)).slice(0, 6);
+        const m6 = analice(9, 13).slice(0, 6);
+        const t6 = analice(15, 19).filter(n => !m6.includes(n)).slice(0, 6);
 
         cont.innerHTML = `
             <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:15px; border-radius:12px; text-align:center;">
-                <h4 style="color:#d4af37; margin:0 0 12px 0; font-size:0.8rem; text-transform:uppercase; border-bottom:1px solid #222; padding-bottom:8px;">Polla de 6 (Basada en ${diaOffset === 1 ? 'Mañana' : 'Hoy'})</h4>
-                
+                <h4 style="color:#d4af37; margin:0 0 12px 0; font-size:0.8rem; text-transform:uppercase;">Polla de 6 (Basada en ${diaOffset === 1 ? 'Mañana' : 'Hoy'})</h4>
                 <div style="margin-bottom:15px;">
-                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase; display:block; margin-bottom:5px;">Bloque Mañana (9AM - 1PM)</small>
+                    <small style="color:#666; font-size:0.55rem; display:block; margin-bottom:5px;">MAÑANA (9AM - 1PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px;">
-                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; border-radius:4px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
+                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; border-radius:4px; font-weight:bold;">${n}</div>`).join('')}
                     </div>
                 </div>
-
                 <div>
-                    <small style="color:#666; font-size:0.55rem; text-transform:uppercase; display:block; margin-bottom:5px;">Bloque Tarde (3PM - 7PM)</small>
+                    <small style="color:#666; font-size:0.55rem; display:block; margin-bottom:5px;">TARDE (3PM - 7PM)</small>
                     <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px;">
-                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; border-radius:4px; font-weight:bold; border: 1px solid #333;">${n}</div>`).join('')}
+                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; border-radius:4px; font-weight:bold;">${n}</div>`).join('')}
                     </div>
                 </div>
             </div>
