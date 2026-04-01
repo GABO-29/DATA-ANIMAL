@@ -163,7 +163,7 @@
         </div>
 
         <section class="card">
-            <h2>PIRÁMIDE DE HOY</h2>
+            <h2 id="titulo-piramide">PIRÁMIDE DE HOY</h2>
             <div id="contenedor-piramide" class="piramide-visual"></div>
         </section>
 
@@ -173,13 +173,41 @@
         <div id="seccion-pollas"></div>
 
         <section class="card destaque">
-            <h2 style="color: #000; border: none; margin:0; font-weight: 800;">DATO DATA ANIMAL</h2>
+            <h2 style="color: #000; border: none; margin:0; font-weight: 800;">FIJO DEL MOMENTO</h2>
             <div id="dato-ganador">---</div>
-            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.7rem;">Fijo recomendado por potencia actual</small>
+            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.7rem;">Dato calculado por probabilidad de racha</small>
         </section>
+
+        <div style="margin-top: 30px; color: var(--gris); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
+            Análisis basado en patrones históricos y algoritmos de racha.
+        </div>
     </div>
 
     <script src="supabase-config.js"></script>
     <script src="app.js"></script>
+    
+    <script>
+        // Inicialización al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            // Genera pirámide inicial y carga datos de Lotto Activo por defecto
+            if(typeof generarPiramide === "function") generarPiramide();
+            if(typeof obtenerEstadisticas === "function") obtenerEstadisticas("Lotto Activo");
+        });
+
+        // Función para actualizar el título de la pirámide visualmente
+        function actualizarTituloPiramide(offset) {
+            const titulo = document.getElementById('titulo-piramide');
+            if(titulo) {
+                titulo.innerText = offset === 1 ? "PIRÁMIDE DE MAÑANA VIP" : "PIRÁMIDE DE HOY";
+            }
+        }
+        
+        // Sobreescribimos ligeramente cambiarDia para que actualice el texto local
+        const originalCambiarDia = window.cambiarDia;
+        window.cambiarDia = function(offset) {
+            actualizarTituloPiramide(offset);
+            if(typeof originalCambiarDia === "function") originalCambiarDia(offset);
+        };
+    </script>
 </body>
 </html>

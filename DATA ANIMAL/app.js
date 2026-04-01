@@ -1,4 +1,5 @@
 // app.js - SISTEMA DE ALTA PRECISIÓN COMPARATIVO (DÍA vs RACHA vs FRÍOS)
+// VERSIÓN ACTUALIZADA: ANTI-REPETICIÓN + FILTRO DE BLOQUE HORARIO
 
 let diaOffset = 0; // 0 = Hoy, 1 = Mañana
 
@@ -66,13 +67,12 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         });
         const conteoDia = {};
         resultadosMismoDia.forEach(d => { conteoDia[d.animal_numero] = (conteoDia[d.animal_numero] || 0) + 1; });
-        const basesDia = Object.entries(conteoDia).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+        const basesDia = Object.entries(conteoDia).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
         // --- ESTRATEGIA 2: LA RACHA (ÚLTIMOS 150 SORTEOS) ---
-        const ultimosSorteos = todos.slice(0, 150);
         const conteoRacha = {};
-        ultimosSorteos.forEach(d => { conteoRacha[d.animal_numero] = (conteoRacha[d.animal_numero] || 0) + 1; });
-        const basesRacha = Object.entries(conteoRacha).sort((a,b) => b[1] - a[1]).slice(0, 2).map(x => x[0]);
+        todos.slice(0, 150).forEach(d => { conteoRacha[d.animal_numero] = (conteoRacha[d.animal_numero] || 0) + 1; });
+        const basesRacha = Object.entries(conteoRacha).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
         // --- ESTRATEGIA 3: LOS "FRÍOS" ---
         const recientes = new Set(todos.slice(0, 100).map(d => d.animal_numero));
@@ -81,31 +81,46 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
         const frios = Object.entries(conteoGlobal)
             .filter(x => !recientes.has(x[0]))
             .sort((a,b) => b[1] - a[1])
-            .slice(0, 2)
             .map(x => x[0]);
 
-        // --- LÓGICA DE REACCIÓN DINÁMICA (CALIENTE PRÓXIMO) ---
+        // --- LÓGICA DE TRIPLETA VIP SIN REPETIDOS (REPOTENCIADA) ---
+        let tripletaVip = [];
+        // 1. Mejor del día
+        tripletaVip.push(basesDia[0] || "01");
+        // 2. Mejor de racha que no sea el anterior
+        let rachaUnica = basesRacha.find(n => !tripletaVip.includes(n)) || "10";
+        tripletaVip.push(rachaUnica);
+        // 3. Mejor frío que no esté repetido
+        let frioUnico = frios.find(n => !tripletaVip.includes(n)) || "25";
+        tripletaVip.push(frioUnico);
+
+        // --- LÓGICA DE REACCIÓN DINÁMICA (CALIENTE PRÓXIMO - SIN REPETIR EL ÚLTIMO) ---
         const mapaSorteo = {};
         for (let i = 0; i < todos.length - 1; i++) {
             if (todos[i+1].animal_numero === ultimo.animal_numero) {
                 mapaSorteo[todos[i].animal_numero] = (mapaSorteo[todos[i].animal_numero] || 0) + 1;
             }
         }
-        let proximoSorteo = Object.entries(mapaSorteo).sort((a,b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+        let proximoSorteo = Object.entries(mapaSorteo)
+            .filter(x => x[0] !== ultimo.animal_numero) // Filtro para no sugerir el que acaba de salir
+            .sort((a,b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(x => x[0]);
+
         if (proximoSorteo.length === 0) {
-            proximoSorteo = Object.entries(conteoGlobal).sort((a,b) => b[1] - a[1]).slice(2, 5).map(x => x[0]);
+            proximoSorteo = basesRacha.filter(n => n !== ultimo.animal_numero).slice(0, 3);
         }
 
-        // --- RENDERIZADO DEL PANEL COMPARATIVO (CON CENTRADO) ---
+        // --- RENDERIZADO DEL PANEL COMPARATIVO ---
         if(ganadorTxt) ganadorTxt.innerText = basesDia[0] || "---";
 
         listado.innerHTML = `
             <div style="margin-bottom:15px; background: #000; border: 2px solid #ffcc00; padding:15px; border-radius:12px; text-align:center;">
                 <div style="color:#ffcc00; font-weight:bold; font-size:0.7rem; text-transform:uppercase; margin-bottom:5px;">👑 TRIPLETA VIP ${nombresDias[diaSemanaAnalisis]}</div>
                 <div style="font-size:1.8rem; font-weight:900; color:#fff; letter-spacing:5px;">
-                    ${basesDia.length >= 3 ? basesDia.join(" | ") : "05 | 14 | 22"}
+                    ${tripletaVip.join(" | ")}
                 </div>
-                <div style="color:#666; font-size:0.55rem; margin-top:5px;">LOS MÁS REPETIDOS LOS DÍAS ${nombresDias[diaSemanaAnalisis]}</div>
+                <div style="color:#666; font-size:0.55rem; margin-top:5px;">ANÁLISIS DE ALTA PRECISIÓN SIN REPETIDOS</div>
             </div>
 
             <div style="margin-bottom:12px; background: #d4af37; padding:15px; border-radius:10px; color:#000; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align:center;">
@@ -118,14 +133,14 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             <div style="margin-bottom:12px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #00ff00; text-align:center;">
                 <div style="color:#00ff00; font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia B: Racha Últimos Sorteos</div>
                 <div style="font-size:1.6rem; font-weight:bold; color:#fff; letter-spacing:5px;">
-                    ${basesRacha.join(" - ")}
+                    ${basesRacha.slice(0,2).join(" - ")}
                 </div>
             </div>
 
             <div style="margin-bottom:12px; background:#1a1a1a; padding:12px; border-radius:10px; border: 1px solid #ff4444; text-align:center;">
                 <div style="color:#ff4444; font-weight:bold; font-size:0.6rem; text-transform:uppercase;">Estrategia C: Animales Fríos (Pendientes)</div>
                 <div style="font-size:1.6rem; font-weight:bold; color:#fff; letter-spacing:5px;">
-                    ${frios.length > 0 ? frios.join(" - ") : "00 - 36"}
+                    ${frios.slice(0,2).join(" - ")}
                 </div>
             </div>
 
@@ -138,9 +153,9 @@ async function obtenerEstadisticas(ruleta = "Lotto Activo") {
             </div>
 
             <div style="background:#000; padding:12px; border-radius:10px; border: 1px solid #d4af37; text-align:center;">
-                <div style="color:#d4af37; font-weight:bold; font-size:0.6rem; text-transform:uppercase; margin-bottom:5px;">Tripleta Maestra (A + B + C)</div>
+                <div style="color:#d4af37; font-weight:bold; font-size:0.6rem; text-transform:uppercase; margin-bottom:5px;">Tripleta Maestra Única (A+B+C)</div>
                 <div style="font-size:1.5rem; font-weight:900; color:#fff; letter-spacing:4px;">
-                    ${basesDia[0] || '01'} | ${basesRacha[0] || '18'} | ${frios[0] || '25'}
+                    ${tripletaVip.join(" | ")}
                 </div>
             </div>
         `;
@@ -177,11 +192,16 @@ async function generarSeccionPollasSeis(diaSemana) {
                     }
                 }
             });
-            return Object.entries(m).sort((a,b) => b[1] - a[1]).slice(0, 6).map(x => x[0]);
+            return Object.entries(m).sort((a,b) => b[1] - a[1]).map(x => x[0]);
         };
 
-        const m6 = analice(9, 13);
-        const t6 = analice(15, 19);
+        const m6Raw = analice(9, 13);
+        const t6Raw = analice(15, 19);
+
+        // Bloque Mañana: 6 animales únicos
+        const m6 = m6Raw.slice(0, 6);
+        // Bloque Tarde: 6 animales únicos que no estén en mañana para dar variedad
+        const t6 = t6Raw.filter(n => !m6.includes(n)).slice(0, 6);
 
         cont.innerHTML = `
             <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:15px; border-radius:12px; text-align:center;">
