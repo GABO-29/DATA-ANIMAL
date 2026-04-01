@@ -43,7 +43,6 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
     const ganadorTxt = document.getElementById('dato-ganador');
     
     try {
-        // Traemos 2000 registros para tener visión global de todas las ruletas
         const { data: globalData, error } = await supabaseClient
             .from('resultados')
             .select('*')
@@ -52,17 +51,15 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
 
         if (error || !globalData || globalData.length < 50) return;
 
-        // FILTRO 1: Datos específicos de la ruleta seleccionada
         const todos = globalData.filter(d => d.ruleta === ruletaActual);
         const ultimo = todos[0];
         
-        // Configuración de fecha
         const fechaAnalisis = new Date();
         if (diaOffset === 1) fechaAnalisis.setDate(fechaAnalisis.getDate() + 1);
         const diaSemanaAnalisis = fechaAnalisis.getDay();
         const nombresDias = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 
-        // --- ESTRATEGIA 1: DÍA DE LA SEMANA (HISTÓRICO) ---
+        // --- ESTRATEGIA 1: DÍA DE LA SEMANA ---
         const resultadosMismoDia = todos.filter(d => {
             const f = new Date(d.fecha + 'T12:00:00');
             return f.getDay() === diaSemanaAnalisis;
@@ -71,12 +68,12 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
         resultadosMismoDia.forEach(d => { conteoDia[d.animal_numero] = (conteoDia[d.animal_numero] || 0) + 1; });
         const basesDia = Object.entries(conteoDia).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
-        // --- ESTRATEGIA 2: LA RACHA (ÚLTIMOS 150) ---
+        // --- ESTRATEGIA 2: LA RACHA (ESPECÍFICA) ---
         const conteoRacha = {};
         todos.slice(0, 150).forEach(d => { conteoRacha[d.animal_numero] = (conteoRacha[d.animal_numero] || 0) + 1; });
         const basesRacha = Object.entries(conteoRacha).sort((a,b) => b[1] - a[1]).map(x => x[0]);
 
-        // --- ESTRATEGIA B: BASES DE RACHA VIVA (GLOBAL 3 RULETAS) ---
+        // --- ESTRATEGIA B: BASES MAESTRAS (GLOBAL 3 RULETAS) ---
         const fechaLimite = new Date();
         fechaLimite.setDate(fechaLimite.getDate() - 3);
         const conteoVivosGlobal = {};
@@ -85,23 +82,18 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
                 conteoVivosGlobal[d.animal_numero] = (conteoVivosGlobal[d.animal_numero] || 0) + 1;
             }
         });
-        // Estos son los que están saliendo parejo en Lotto, Granjita y Selva
         const rachaVivaGlobal = Object.entries(conteoVivosGlobal)
             .sort((a,b) => b[1] - a[1])
             .map(x => x[0]);
 
-        // --- LÓGICA: TRIPLETA VIP (MANTENIENDO TU MÉTODO DE ALTO FLUJO) ---
+        // --- LÓGICA: TRIPLETA VIP ---
         let tripletaVip = [];
-        const listaVivos = rachaVivaGlobal.slice(0, 15); // Top 15 más calientes globalmente
-
-        // 1. Favorito: El más vivo que también sea tendencia hoy
+        const listaVivos = rachaVivaGlobal.slice(0, 15);
         tripletaVip.push(basesDia.find(n => listaVivos.includes(n)) || basesDia[0]);
-        // 2. Segundo: El mejor de la racha que esté vivo
         tripletaVip.push(basesRacha.find(n => listaVivos.includes(n) && !tripletaVip.includes(n)) || basesRacha[0]);
-        // 3. Tercero: El que más está repicando globalmente
         tripletaVip.push(rachaVivaGlobal.find(n => !tripletaVip.includes(n)) || basesDia[1]);
 
-        // --- LÓGICA: CALIENTE PRÓXIMO CON CRUCE HORARIO ---
+        // --- LÓGICA: PRÓXIMO SORTEO ---
         const esPmUltimo = ultimo.hora.toLowerCase().includes('p.m');
         const mapaHorario = {};
         for (let i = 0; i < todos.length - 1; i++) {
@@ -122,7 +114,6 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
             proximoSorteo = rachaVivaGlobal.filter(n => n !== ultimo.animal_numero).slice(0, 3);
         }
 
-        // --- RENDERIZADO ---
         if(ganadorTxt) ganadorTxt.innerText = tripletaVip[0];
 
         listado.innerHTML = `
@@ -131,7 +122,6 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
                 <div style="font-size:1.8rem; font-weight:900; color:#fff; letter-spacing:5px;">
                     ${tripletaVip.join(" | ")}
                 </div>
-                <div style="color:#00ff00; font-size:0.55rem; margin-top:5px;">SINCRONÍA GLOBAL: LOTTO + GRANJITA + SELVA</div>
             </div>
 
             <div style="margin-bottom:12px; background: #d4af37; padding:15px; border-radius:10px; color:#000; text-align:center;">
@@ -146,74 +136,80 @@ async function obtenerEstadisticas(ruletaActual = "Lotto Activo") {
                 <div style="font-size:2.2rem; font-weight:900; color:#fff; letter-spacing:10px; margin: 5px 0;">
                     ${rachaVivaGlobal.slice(0,2).join(" | ")}
                 </div>
-                <div style="color:#00ff00; font-size:0.55rem;">TENDENCIA VIVA EN LAS 3 RULETAS - ÚSALAS PARA COMBINAR</div>
+                <div style="color:#00ff00; font-size:0.55rem;">TENDENCIA GLOBAL - PARA TODAS LAS RULETAS</div>
             </div>
 
             <div style="margin-bottom:12px; background:#111; padding:12px; border-radius:10px; border-left: 5px solid #00ff00; text-align:center;">
                 <div style="color:#00ff00; font-weight:bold; font-size:0.65rem;">CALIENTE PARA EL PRÓXIMO SORTEO</div>
-                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, se espera por horario:</div>
+                <div style="color:#fff; font-size:0.8rem; margin: 4px 0;">Salió el <b>${ultimo.animal_numero}</b>, se espera:</div>
                 <div style="font-size:1.4rem; font-weight:bold; color:#fff; letter-spacing:3px;">
                     ${proximoSorteo.join(" - ")}
                 </div>
             </div>
         `;
 
-        await generarSeccionPollasSeis(diaSemanaAnalisis);
+        await generarSeccionPollasSeis(diaSemanaAnalisis, globalData, ruletaActual);
 
     } catch (err) { console.error(err); }
 }
 
-async function generarSeccionPollasSeis(diaSemana) {
+async function generarSeccionPollasSeis(diaSemana, globalData, ruletaActual) {
     const cont = document.getElementById('seccion-pollas');
     if (!cont) return;
 
-    try {
-        const { data: global, error } = await supabaseClient
-            .from('resultados')
-            .select('*')
-            .order('id', { ascending: false })
-            .limit(1000);
+    // --- BLOQUEO DE SEGURIDAD ---
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const resultadosHoyRuleta = globalData.filter(d => d.fecha === hoyStr && d.ruleta === ruletaActual);
+    
+    const tieneManana = resultadosHoyRuleta.some(d => d.hora.includes('9:00'));
+    const tieneTarde = resultadosHoyRuleta.some(d => d.hora.includes('3:00'));
 
-        if (error || !global) return;
-        
-        const analice = (h1, h2) => {
-            const m = {};
-            global.forEach(d => {
-                const f = new Date(d.fecha + 'T12:00:00');
-                if (f.getDay() === diaSemana) {
-                    const h = d.hora.toLowerCase();
-                    const n = parseInt(h.split(':')[0]);
-                    const pm = h.includes('p.m');
-                    const h24 = (pm && n !== 12) ? n + 12 : (!pm && n === 12 ? 0 : n);
-                    if (h24 >= h1 && h24 <= h2) {
-                        m[d.animal_numero] = (m[d.animal_numero] || 0) + 1;
-                    }
+    const analice = (h1, h2) => {
+        const m = {};
+        globalData.forEach(d => {
+            const f = new Date(d.fecha + 'T12:00:00');
+            if (f.getDay() === diaSemana) {
+                const h = d.hora.toLowerCase();
+                const n = parseInt(h.split(':')[0]);
+                const pm = h.includes('p.m');
+                const h24 = (pm && n !== 12) ? n + 12 : (!pm && n === 12 ? 0 : n);
+                if (h24 >= h1 && h24 <= h2) {
+                    m[d.animal_numero] = (m[d.animal_numero] || 0) + 1;
                 }
-            });
-            return Object.entries(m).sort((a,b) => b[1] - a[1]).map(x => x[0]);
-        };
+            }
+        });
+        return Object.entries(m).sort((a,b) => b[1] - a[1]).map(x => x[0]);
+    };
 
-        const m6 = analice(9, 13).slice(0, 6);
-        const t6 = analice(15, 19).filter(n => !m6.includes(n)).slice(0, 6);
+    const m6 = analice(9, 13).slice(0, 6);
+    const t6 = analice(15, 19).filter(n => !m6.includes(n)).slice(0, 6);
 
-        cont.innerHTML = `
-            <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:15px; border-radius:12px; text-align:center;">
-                <h4 style="color:#d4af37; margin:0 0 12px 0; font-size:0.8rem; text-transform:uppercase;">Polla de 6 (Tendencia Bloqueada)</h4>
-                <div style="margin-bottom:15px;">
-                    <small style="color:#666; font-size:0.55rem; display:block; margin-bottom:5px;">MAÑANA (9AM - 1PM)</small>
-                    <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px;">
-                        ${m6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; border-radius:4px; font-weight:bold;">${n}</div>`).join('')}
-                    </div>
-                </div>
-                <div>
-                    <small style="color:#666; font-size:0.55rem; display:block; margin-bottom:5px;">TARDE (3PM - 7PM)</small>
-                    <div style="display:grid; grid-template-columns: repeat(6, 1fr); gap:4px;">
-                        ${t6.map(n => `<div style="background:#222; color:#d4af37; font-size:0.75rem; padding:8px 0; border-radius:4px; font-weight:bold;">${n}</div>`).join('')}
-                    </div>
-                </div>
+    const renderLista = (lista, activo) => {
+        if (!activo && diaOffset === 0) return `<div style="color:#666; font-style:italic; font-size:0.7rem; padding:10px;">ESPERANDO SORTEO INICIAL...</div>`;
+        return `
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:6px;">
+                ${lista.map(n => `<div style="background:#222; color:#d4af37; font-size:0.9rem; padding:10px 0; border-radius:6px; font-weight:900; border:1px solid #333;">${n}</div>`).join('')}
             </div>
         `;
-    } catch (e) { console.error(e); }
+    };
+
+    cont.innerHTML = `
+        <div style="margin-top:20px; background:#000; border: 2px solid #d4af37; padding:15px; border-radius:12px; text-align:center;">
+            <h4 style="color:#d4af37; margin:0 0 15px 0; font-size:0.85rem; text-transform:uppercase; font-weight:900;">🔥 POLLA DE 6 (TENDENCIA BLOQUEADA)</h4>
+            
+            <div style="margin-bottom:20px;">
+                <div style="color:#00ff00; font-size:0.6rem; font-weight:bold; text-transform:uppercase; margin-bottom:8px;">🎯 BLOQUE MAÑANA (9AM - 1PM)</div>
+                ${renderLista(m6, tieneManana)}
+            </div>
+
+            <div>
+                <div style="color:#00ff00; font-size:0.6rem; font-weight:bold; text-transform:uppercase; margin-bottom:8px;">🎯 BLOQUE TARDE (3PM - 7PM)</div>
+                ${renderLista(t6, tieneTarde)}
+            </div>
+            
+            <div style="margin-top:10px; color:#555; font-size:0.5rem; text-transform:uppercase;">Estrategia: Frecuencia Horaria + Repique Global</div>
+        </div>
+    `;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
