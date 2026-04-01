@@ -3,16 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DATA ANIMAL | Pronósticos</title>
+    <title>DATA ANIMAL | Pronósticos VIP</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --fondo: #0a0a0a; --card: #141414; --oro: #ffcc00; --texto: #ffffff; --gris: #888; --verde: #00ff00; --rojo: #ff4444; }
-        * { box-sizing: border-box; text-align: center; } /* CENTRADO UNIVERSAL */
+        :root { 
+            --fondo: #0a0a0a; 
+            --card: #141414; 
+            --oro: #ffcc00; 
+            --texto: #ffffff; 
+            --gris: #888; 
+            --verde: #00ff00; 
+            --rojo: #ff4444; 
+        }
+
+        * { box-sizing: border-box; text-align: center; }
         
         body { 
             background: var(--fondo); 
             color: var(--texto); 
-            font-family: 'Segoe UI', sans-serif; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             margin: 0; 
             padding: 20px; 
             display: flex; 
@@ -29,22 +38,30 @@
             width: 100%;
         }
 
-        h1 { font-size: 2rem; letter-spacing: 3px; margin: 0; color: var(--oro); }
+        h1 { 
+            font-size: 2rem; 
+            letter-spacing: 3px; 
+            margin: 0; 
+            color: var(--oro); 
+            text-transform: uppercase;
+            font-weight: 900;
+        }
 
         select { 
             width: 100%; 
-            padding: 12px; 
+            padding: 15px; 
             background: var(--card); 
             color: var(--oro); 
             border: 1px solid var(--oro); 
-            border-radius: 5px; 
+            border-radius: 8px; 
             font-weight: bold; 
             margin-bottom: 20px; 
             outline: none;
-            text-align-last: center; /* Centra el texto dentro del select */
+            text-align-last: center;
+            font-size: 1rem;
+            appearance: none;
         }
 
-        /* Estilos para los botones de navegación de día */
         .nav-dias {
             display: flex;
             gap: 10px;
@@ -55,13 +72,14 @@
 
         .btn-dia {
             flex: 1;
-            padding: 12px;
+            padding: 14px;
             border-radius: 8px;
             font-weight: 900;
             cursor: pointer;
             text-transform: uppercase;
             transition: 0.3s;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            letter-spacing: 1px;
         }
 
         #btn-hoy {
@@ -81,64 +99,80 @@
             border-radius: 12px; 
             padding: 20px; 
             margin-bottom: 20px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
             display: flex;
             flex-direction: column;
             align-items: center;
+            border: 1px solid #222;
         }
 
         h2 { 
             font-size: 0.9rem; 
             color: var(--oro); 
             text-transform: uppercase; 
-            letter-spacing: 1px; 
+            letter-spacing: 2px; 
             margin-top: 0; 
             width: 100%;
+            font-weight: 800;
         }
 
         .piramide-visual { 
             display: flex; 
             flex-direction: column; 
             align-items: center; 
-            font-family: monospace; 
-            font-size: 1.5rem; 
+            font-family: 'Courier New', monospace; 
+            font-size: 1.6rem; 
             color: var(--oro); 
-            letter-spacing: 10px; 
-            line-height: 1.6; 
+            letter-spacing: 12px; 
+            line-height: 1.7; 
             width: 100%;
+            font-weight: bold;
         }
 
         /* Estilo para el Dato Destacado Principal */
         .destaque { 
-            background: var(--oro); 
+            background: linear-gradient(145deg, var(--oro), #d4aa00); 
             color: #000; 
-            padding: 30px; 
+            padding: 35px 20px; 
             border-radius: 12px; 
-            margin-top: 20px; 
+            margin-top: 10px; 
             width: 100%;
+            border: none;
+        }
+
+        .destaque h2 {
+            color: #000;
+            border: none;
         }
 
         #dato-ganador { 
-            font-size: 4.5rem; 
-            font-weight: 900; 
+            font-size: 5rem; 
+            font-weight: 950; 
             margin: 10px 0; 
             line-height: 1; 
             display: block;
+            text-shadow: 2px 2px 0px rgba(255,255,255,0.2);
         }
 
-        /* Contenedor para las Pollas */
-        #seccion-pollas { 
-            margin-bottom: 20px; 
-            width: 100%;
-        }
-
-        /* Ajustes para los bloques generados por JS */
+        /* Contenedor para las Pollas y Listados */
+        #seccion-pollas { width: 100%; }
         #lista-frecuentes { width: 100%; }
 
+        /* Estilos de etiquetas internas generadas por JS */
+        .tag-estrategia {
+            font-size: 0.65rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+            letter-spacing: 1px;
+        }
+
         @media (max-width: 480px) { 
-            h1 { font-size: 1.5rem; } 
-            .piramide-visual { font-size: 1.2rem; letter-spacing: 6px; } 
-            #dato-ganador { font-size: 3.5rem; } 
+            h1 { font-size: 1.6rem; } 
+            .piramide-visual { font-size: 1.3rem; letter-spacing: 8px; } 
+            #dato-ganador { font-size: 4rem; } 
+            body { padding: 15px; }
         }
     </style>
 </head>
@@ -158,8 +192,8 @@
         </select>
 
         <div class="nav-dias">
-            <button id="btn-hoy" class="btn-dia" onclick="cambiarDia(0)">Ver Hoy</button>
-            <button id="btn-manana" class="btn-dia" onclick="cambiarDia(1)">Mañana VIP</button>
+            <button id="btn-hoy" class="btn-dia" onclick="cambiarDia(0)">PRONÓSTICO HOY</button>
+            <button id="btn-manana" class="btn-dia" onclick="cambiarDia(1)">MAÑANA VIP</button>
         </div>
 
         <section class="card">
@@ -167,19 +201,21 @@
             <div id="contenedor-piramide" class="piramide-visual"></div>
         </section>
 
-        <section id="lista-frecuentes">
-            </section>
+        <section id="lista-frecuentes"></section>
 
         <div id="seccion-pollas"></div>
 
         <section class="card destaque">
-            <h2 style="color: #000; border: none; margin:0; font-weight: 800;">FIJO DEL MOMENTO</h2>
+            <h2 style="font-weight: 900; margin-bottom: 5px;">FIJO DEL MOMENTO</h2>
             <div id="dato-ganador">---</div>
-            <small style="font-weight: bold; text-transform: uppercase; font-size: 0.7rem;">Dato calculado por probabilidad de racha</small>
+            <div style="font-weight: 900; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px;">
+                ALTA PROBABILIDAD DE RACHA
+            </div>
         </section>
 
-        <div style="margin-top: 30px; color: var(--gris); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
-            Análisis basado en patrones históricos y algoritmos de racha.
+        <div style="margin-top: 30px; color: var(--gris); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 40px;">
+            Análisis de Sincronía Global: Lotto Activo | La Granjita | Selva Plus<br>
+            <span style="color: var(--oro); font-weight: bold;">© 2026 DATA ANIMAL - ALTO FLUJO</span>
         </div>
     </div>
 
@@ -189,12 +225,12 @@
     <script>
         // Inicialización al cargar la página
         document.addEventListener('DOMContentLoaded', () => {
-            // Genera pirámide inicial y carga datos de Lotto Activo por defecto
+            // Sincronización inicial
             if(typeof generarPiramide === "function") generarPiramide();
             if(typeof obtenerEstadisticas === "function") obtenerEstadisticas("Lotto Activo");
         });
 
-        // Función para actualizar el título de la pirámide visualmente
+        // Función para actualizar el título de la pirámide visualmente según el día
         function actualizarTituloPiramide(offset) {
             const titulo = document.getElementById('titulo-piramide');
             if(titulo) {
@@ -202,11 +238,13 @@
             }
         }
         
-        // Sobreescribimos ligeramente cambiarDia para que actualice el texto local
+        // Interceptor para actualizar la UI local al cambiar de día
         const originalCambiarDia = window.cambiarDia;
         window.cambiarDia = function(offset) {
             actualizarTituloPiramide(offset);
-            if(typeof originalCambiarDia === "function") originalCambiarDia(offset);
+            if(typeof originalCambiarDia === "function") {
+                originalCambiarDia(offset);
+            }
         };
     </script>
 </body>
